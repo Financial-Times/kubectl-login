@@ -2,19 +2,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/coreos/go-oidc"
 	"golang.org/x/oauth2"
-
-	"encoding/json"
-
-	"runtime"
 
 	. "github.com/logrusorgru/aurora"
 )
