@@ -13,7 +13,6 @@ import (
 	"golang.org/x/oauth2"
 
 	"encoding/json"
-	"io/ioutil"
 
 	"runtime"
 
@@ -76,11 +75,11 @@ func main() {
 	redirectUrl := oauth2Config.AuthCodeURL(state)
 	logger.Println(redirectUrl)
 	browserErr := openBrowser(redirectUrl)
-	
+
 	if browserErr != nil {
-    	if !strings.Contains(browserErr.Error(), "executable file not found in $PATH") {
-        	logger.Fatalf("error: cannot open browser: %v", browserErr)
-        }
+		if !strings.Contains(browserErr.Error(), "executable file not found in $PATH") {
+			logger.Fatalf("error: cannot open browser: %v", browserErr)
+		}
 	}
 
 	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientID})
@@ -159,7 +158,7 @@ func getRawConfig() map[string]*configuration {
 		logger.Fatalf("error: cannot open config file at %s: %v", configPath, err)
 	}
 
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		closeFile(file)
 		logger.Fatalf("error: cannot read config file at %s: %v", configPath, err)
