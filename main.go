@@ -146,7 +146,7 @@ func getToken() string {
 func setCreds(token string) {
 	tstr := fmt.Sprintf("--token=%s", token)
 	cmd := exec.Command("kubectl", "config", "set-credentials", "kubectl-login", tstr)
-	err := cmd.Start()
+	err := cmd.Run()
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -156,13 +156,13 @@ func switchContext(cluster string) {
 
 	clusterArg := fmt.Sprintf("--cluster=%s", cluster)
 	cmd := exec.Command("kubectl", "config", "set-context", "kubectl-login-context", "--user=kubectl-login", clusterArg, "--namespace=default")
-	err := cmd.Start()
+	err := cmd.Run()
 	if err != nil {
 		logger.Fatal(err)
 	}
-	cmd.Wait()
+
 	cmd = exec.Command("kubectl", "config", "use-context", "kubectl-login-context")
-	err = cmd.Start()
+	err = cmd.Run()
 	if err != nil {
 		logger.Fatal(err)
 	}
