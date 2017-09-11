@@ -1,21 +1,24 @@
 package main
 
 import (
-	"golang.org/x/oauth2"
-	"github.com/coreos/go-oidc"
 	"context"
+	"flag"
 	"fmt"
 	"log"
-	"os/exec"
 	"os"
-	"syscall"
+	"os/exec"
+	"os/signal"
 	"strings"
-	"golang.org/x/crypto/ssh/terminal"
-	"flag"
+	"syscall"
 
-	. "github.com/logrusorgru/aurora"
+	"github.com/coreos/go-oidc"
+	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/oauth2"
+
 	"encoding/json"
 	"io/ioutil"
+
+	. "github.com/logrusorgru/aurora"
 )
 
 var logger = log.New(os.Stdout, "", log.LUTC)
@@ -134,6 +137,21 @@ func notifyAndPrompt() {
 
 func getToken() string {
 	fmt.Print(Cyan("Enter token: "))
+
+	// handle restoring terminal
+	stdinFd := int(os.Stdin.Fd())
+	state, err := terminal.GetState(stdinFd)
+	defer terminal.Restore(stdinFd, state)
+
+	sigch := make(chan os.Signal, 1)
+	signal.Notify(sigch, os.Interrupt)
+	go func() {
+		for _ = range sigch {
+			terminal.Restore(stdinFd, state)
+			os.Exit(1)
+		}
+	}()
+
 	byteToken, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		logger.Fatal(err)
@@ -146,7 +164,7 @@ func getToken() string {
 func setCreds(token string) {
 	tstr := fmt.Sprintf("--token=%s", token)
 	cmd := exec.Command("kubectl", "config", "set-credentials", "kubectl-login", tstr)
-	err := cmd.Start()
+	err := cmd.Run()
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -156,13 +174,13 @@ func switchContext(cluster string) {
 
 	clusterArg := fmt.Sprintf("--cluster=%s", cluster)
 	cmd := exec.Command("kubectl", "config", "set-context", "kubectl-login-context", "--user=kubectl-login", clusterArg, "--namespace=default")
-	err := cmd.Start()
+	err := cmd.Run()
 	if err != nil {
 		logger.Fatal(err)
 	}
-	cmd.Wait()
+
 	cmd = exec.Command("kubectl", "config", "use-context", "kubectl-login-context")
-	err = cmd.Start()
+	err = cmd.Run()
 	if err != nil {
 		logger.Fatal(err)
 	}
