@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -19,18 +18,20 @@ import (
 	"io/ioutil"
 
 	. "github.com/logrusorgru/aurora"
+	"runtime"
 )
 
 var logger = log.New(os.Stdout, "", log.LUTC)
 
 type Configuration struct {
-	Issuer      string `json:"issuer"`
-	RedirectURL string `json:"redirectUrl"`
-	LoginSecret string `json:"loginSecret"`
-	Cluster     string `json:"cluster"`
+	Issuer      string   `json:"issuer"`
+	RedirectURL string   `json:"redirectUrl"`
+	LoginSecret string   `json:"loginSecret"`
+	Cluster     string   `json:"cluster"`
+	Aliases     []string `json:"aliases"`
 }
 
-func getConfigFile(clusterName string) Configuration {
+func rawConfig() map[string]*Configuration {
 	file, err := os.Open(os.Getenv("HOME") + "/.kubectl-login.json")
 	if err != nil {
 		logger.Fatal("error:", err)
@@ -39,36 +40,40 @@ func getConfigFile(clusterName string) Configuration {
 	if err != nil {
 		logger.Fatal("error:", err)
 	}
-	var objmap map[string]*json.RawMessage
+	var objmap map[string]*Configuration
 	err = json.Unmarshal(data, &objmap)
 	if err != nil {
 		logger.Fatal("error:", err)
 	}
-	var configuration Configuration
 
-	if val, ok := objmap[clusterName]; ok {
-		err = json.Unmarshal(*val, &configuration)
-		return configuration
-	} else {
-		logger.Fatal(fmt.Sprintf("Cluster %s not found in ~/.kubectl-login.json file", Bold(Cyan(clusterName))))
-		return Configuration{}
-	}
+	return objmap
 }
 
 func main() {
 
-	clusterPtr := flag.String("cluster", "", "The Cluster to login to")
-	flag.Parse()
+	rawConfigMap := rawConfig()
 
-	var cluster string
+	args := os.Args[1:]
 
-	if *clusterPtr != "" {
-		cluster = *clusterPtr
-	} else {
-		logger.Fatal(fmt.Sprintf("Cluster flag is mandatory. try '%s' to get this value.", Bold(Cyan("kubectl config get-contexts"))))
+	if len(args) == 0 {
+		logger.Fatal(fmt.Sprintf("Alias is mandatory i.e %s. try '%s' to get this value.", Bold(Cyan("kubectl-login <ALIAS>")) , Bold(Cyan("cat $HOME/.kubectl-login.json"))))
 	}
 
-	config := getConfigFile(cluster)
+	alias := args[0]
+
+	var config *Configuration
+	var cluster string
+
+	for k, v := range rawConfigMap {
+		if containsAlias(v, alias) {
+			cluster = k
+			config = v
+		}
+	}
+
+	if cluster == "" {
+		logger.Fatal(fmt.Sprintf("Alias \"%s\" not found. try '%s' to get this value.", Bold(Cyan(alias)) , Bold(Cyan("cat $HOME/.kubectl-login.json"))))
+	}
 
 	var kl string
 
@@ -111,7 +116,15 @@ func main() {
 
 	acu := oauth2Config.AuthCodeURL("some state")
 
-	cmd := exec.Command("open", acu)
+	var openCmd string
+
+	if runtime.GOOS == "darwin" {
+		openCmd = "open"
+	} else {
+		openCmd = "sensible-browser"
+	}
+
+	cmd := exec.Command(openCmd, acu)
 	err = cmd.Start()
 	if err != nil {
 		logger.Fatal(err)
@@ -129,6 +142,15 @@ func main() {
 	setCreds(rawToken)
 	switchContext(cluster)
 	notifyAndPrompt()
+}
+
+func containsAlias(c *Configuration, s string) bool {
+	for _, val := range c.Aliases {
+		if val == s {
+			return true
+		}
+	}
+	return false
 }
 
 func notifyAndPrompt() {
