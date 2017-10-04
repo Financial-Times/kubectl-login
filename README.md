@@ -20,3 +20,8 @@
   }
 }
 ```
+
+# Releases
+
+* Upload the binary to github and create a release
+* Cross compile binary with `GOOS=linux GOARCH=amd64 go build -o kubectl-login-linux .`
