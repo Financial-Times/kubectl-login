@@ -23,5 +23,6 @@
 
 # Releases
 
-* Upload the binary to github and create a release
-* Cross compile binary with `GOOS=linux GOARCH=amd64 go build -o kubectl-login-linux .`
+* Cross compile binary for linux with with `GOOS=linux GOARCH=amd64 go build -o kubectl-login-linux .`
+* Cross compile binary for windows with `GOOS=windows GOARCH=amd64 go build -o=kubectl-login-windows.exe .`
+* Upload the binaries to github and create a release
