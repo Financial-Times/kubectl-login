@@ -17,8 +17,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	. "github.com/logrusorgru/aurora"
 	"runtime"
+
+	. "github.com/logrusorgru/aurora"
 )
 
 var logger = log.New(os.Stdout, "", log.LUTC)
@@ -56,7 +57,7 @@ func main() {
 	args := os.Args[1:]
 
 	if len(args) == 0 {
-		logger.Fatal(fmt.Sprintf("Alias is mandatory i.e %s. try '%s' to get this value.", Bold(Cyan("kubectl-login <ALIAS>")) , Bold(Cyan("cat $HOME/.kubectl-login.json"))))
+		logger.Fatal(fmt.Sprintf("Alias is mandatory i.e %s. try '%s' to get this value.", Bold(Cyan("kubectl-login <ALIAS>")), Bold(Cyan("cat $HOME/.kubectl-login.json"))))
 	}
 
 	alias := args[0]
@@ -72,7 +73,7 @@ func main() {
 	}
 
 	if cluster == "" {
-		logger.Fatal(fmt.Sprintf("Alias \"%s\" not found. try '%s' to get this value.", Bold(Cyan(alias)) , Bold(Cyan("cat $HOME/.kubectl-login.json"))))
+		logger.Fatal(fmt.Sprintf("Alias \"%s\" not found. try '%s' to get this value.", Bold(Cyan(alias)), Bold(Cyan("cat $HOME/.kubectl-login.json"))))
 	}
 
 	var kl string
