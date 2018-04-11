@@ -1,5 +1,6 @@
 # kubectl-login
 
+
 ## Config file
 
 `$HOME/.kubectl-login.json`
@@ -23,6 +24,18 @@
 
 # Releases
 
+## Install dep
+
+### Mac
+`brew install dep` / `brew upgrade dep`
+
+### Other Platforms
+`curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh`
+
+## Run dep ensure
+`dep ensure`
+
+## Compile binaries
 * Cross compile binary for linux with with `GOOS=linux GOARCH=amd64 go build -o kubectl-login-linux .`
-* Cross compile binary for windows with `GOOS=windows GOARCH=amd64 go build -o=kubectl-login-windows.exe .`
+* Cross compile binary for windows with `GOOS=windows GOARCH=amd64 go build -o kubectl-login-windows.exe .`
 * Upload the binaries to github and create a release

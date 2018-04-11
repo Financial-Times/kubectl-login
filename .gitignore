@@ -2,3 +2,4 @@ kubectl-login
 kubectl-login-linux
 .idea/
 *.exe
+vendor/
