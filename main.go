@@ -24,125 +24,127 @@ import (
 
 var logger = log.New(os.Stdout, "", log.LUTC)
 
+const (
+	clientId   = "kubectl-login"
+	configFile = ".kubectl-login.json"
+)
+
 type Configuration struct {
 	Issuer      string   `json:"issuer"`
 	RedirectURL string   `json:"redirectUrl"`
 	LoginSecret string   `json:"loginSecret"`
-	Cluster     string   `json:"cluster"`
 	Aliases     []string `json:"aliases"`
 }
 
-func rawConfig() map[string]*Configuration {
-	file, err := os.Open(os.Getenv("HOME") + "/.kubectl-login.json")
-	if err != nil {
-		logger.Fatal("error:", err)
-	}
-	data, err := ioutil.ReadAll(file)
-	if err != nil {
-		logger.Fatal("error:", err)
-	}
-	var objmap map[string]*Configuration
-	err = json.Unmarshal(data, &objmap)
-	if err != nil {
-		logger.Fatal("error:", err)
-	}
-
-	return objmap
-}
-
 func main() {
-
-	rawConfigMap := rawConfig()
-
-	args := os.Args[1:]
-
-	if len(args) == 0 {
-		logger.Fatal(fmt.Sprintf("Alias is mandatory i.e %s. try '%s' to get this value.", Bold(Cyan("kubectl-login <ALIAS>")), Bold(Cyan("cat $HOME/.kubectl-login.json"))))
-	}
-
-	alias := args[0]
-
-	var config *Configuration
-	var cluster string
-
-	for k, v := range rawConfigMap {
-		if containsAlias(v, alias) {
-			cluster = k
-			config = v
-		}
-	}
-
-	if cluster == "" {
-		logger.Fatal(fmt.Sprintf("Alias \"%s\" not found. try '%s' to get this value.", Bold(Cyan(alias)), Bold(Cyan("cat $HOME/.kubectl-login.json"))))
-	}
-
-	var kl string
-
-	if os.Getenv("KUBELOGIN") != "" {
-		kl = os.Getenv("KUBELOGIN")
-	} else if config.LoginSecret != "" {
-		kl = config.LoginSecret
-	} else {
-		logger.Fatal("KUBELOGIN is not set. You Can also set this in your ~/.kubectl-login.json file.")
-	}
-
+	rawConfig := getRawConfig()
+	alias := getAlias()
+	config, cluster := getConfigByAlias(alias, rawConfig)
+	kubeLogin := getKubeLogin(config)
 	ctx := context.Background()
+
 	// Initialize a provider by specifying dex's issuer URL.
 	provider, err := oidc.NewProvider(ctx, config.Issuer)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatalf("error: cannot initialize OIDC provider for issuer %s:%v", config.Issuer, err)
 	}
 
 	// Configure the OAuth2 config with the client values.
 	oauth2Config := oauth2.Config{
-		// client_id and client_secret of the client.
-		ClientID:     "kubectl-login",
-		ClientSecret: kl,
-
-		// The redirectURL.
-		RedirectURL: config.RedirectURL,
-
-		// Discovery returns the OAuth2 endpoints.
-		Endpoint: provider.Endpoint(),
-
-		// "openid" is a required scope for OpenID Connect flows.
-		//
-		// Other scopes, such as "groups" can be requested.
-		Scopes: []string{oidc.ScopeOpenID, "profile", "email", "groups"},
+		ClientID:     clientId,
+		ClientSecret: kubeLogin,
+		RedirectURL:  config.RedirectURL,
+		Endpoint:     provider.Endpoint(),                                      // Discovery returns the OAuth2 endpoints.
+		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups"}, // "openid" is a required scope for OpenID Connect flows.
 	}
 
 	// Create an ID token parser.
+	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientId})
 
-	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: "kubectl-login"})
-
-	acu := oauth2Config.AuthCodeURL("some state")
-
-	var openCmd string
-
-	if runtime.GOOS == "darwin" {
-		openCmd = "open"
-	} else {
-		openCmd = "sensible-browser"
-	}
-
-	cmd := exec.Command(openCmd, acu)
+	cmd := exec.Command(getOpenCmd(), oauth2Config.AuthCodeURL("some state"))
 	err = cmd.Start()
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatalf("error: cannnot open browser using command %s: %v", getOpenCmd(), err)
 	}
 
 	rawToken := getToken()
-
 	_, err = idTokenVerifier.Verify(ctx, rawToken)
-
 	if err != nil {
-		logger.Printf("token is invalid, error: %s\n", err.Error())
-		return
+		logger.Fatalf("error: token is invalid: %s\n", err.Error())
 	}
 
 	setCreds(rawToken)
 	switchContext(cluster)
 	notifyAndPrompt()
+}
+
+func getOpenCmd() string {
+	if runtime.GOOS == "darwin" {
+		return "open"
+	} else {
+		return "sensible-browser"
+	}
+}
+func getRawConfig() map[string]*Configuration {
+	configPath := os.Getenv("HOME") + "/" + configFile
+
+	file, err := os.Open(configPath)
+	if err != nil {
+		logger.Fatalf("error: cannot open config file at %s: %v", configPath, err)
+	}
+
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		closeFile(file)
+		logger.Fatalf("error: cannot read config file at %s: %v", configPath, err)
+	}
+
+	var cfg map[string]*Configuration
+	err = json.Unmarshal(data, &cfg)
+	if err != nil {
+		closeFile(file)
+		logger.Fatalf("error: cannot unmarshal contents of config file at %s: %v", configPath, err)
+	}
+
+	closeFile(file)
+	return cfg
+}
+
+func getAlias() string {
+	args := os.Args[1:]
+	if len(args) == 0 {
+		logger.Fatalf("Alias is mandatory i.e %s. try '%s' to get this value.",
+			Bold(Cyan("kubectl-login <ALIAS>")), Bold(Cyan("cat $HOME/"+configFile)))
+	}
+	return args[0]
+}
+
+func closeFile(f *os.File) {
+	if err := f.Close(); err != nil {
+		logger.Printf("warning: couldn't close config file: %v", err)
+	}
+}
+
+func getConfigByAlias(alias string, rawConfig map[string]*Configuration) (*Configuration, string) {
+	for k, v := range rawConfig {
+		if containsAlias(v, alias) {
+			return v, k
+		}
+	}
+	logger.Fatalf("Alias \"%s\" not found. Try '%s' to get this value.",
+		Bold(Cyan(alias)), Bold(Cyan("cat $HOME/"+configFile)))
+	return nil, ""
+}
+
+func getKubeLogin(config *Configuration) string {
+	if os.Getenv("KUBELOGIN") != "" {
+		return os.Getenv("KUBELOGIN")
+	} else if config.LoginSecret != "" {
+		return config.LoginSecret
+	} else {
+		logger.Fatal("KUBELOGIN is not set. You Can also set this in your ~/" + configFile + " file.")
+		return ""
+	}
 }
 
 func containsAlias(c *Configuration, s string) bool {
@@ -155,7 +157,8 @@ func containsAlias(c *Configuration, s string) bool {
 }
 
 func notifyAndPrompt() {
-	fmt.Printf("\nLogged in. Now try `%s` to get your context or '%s' to get started.\n", Cyan("kubectl config get-contexts"), Cyan("kubectl get pods"))
+	fmt.Printf("\nLogged in. Now try `%s` to get your context or '%s' to get started.\n",
+		Cyan("kubectl config get-contexts"), Cyan("kubectl get pods"))
 }
 
 func getToken() string {
@@ -169,7 +172,7 @@ func getToken() string {
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, os.Interrupt)
 	go func() {
-		for _ = range sigch {
+		for range sigch {
 			terminal.Restore(stdinFd, state)
 			os.Exit(1)
 		}
@@ -177,7 +180,7 @@ func getToken() string {
 
 	byteToken, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatalf("error: cannot read topen from terminal: %v", err)
 	}
 	token := string(byteToken)
 
@@ -186,25 +189,25 @@ func getToken() string {
 
 func setCreds(token string) {
 	tstr := fmt.Sprintf("--token=%s", token)
-	cmd := exec.Command("kubectl", "config", "set-credentials", "kubectl-login", tstr)
+	cmd := exec.Command("kubectl", "config", "set-credentials", clientId, tstr)
 	err := cmd.Run()
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatalf("error: cannot set kubectl credentials: %v", err)
 	}
 }
 
 func switchContext(cluster string) {
-
 	clusterArg := fmt.Sprintf("--cluster=%s", cluster)
-	cmd := exec.Command("kubectl", "config", "set-context", "kubectl-login-context", "--user=kubectl-login", clusterArg, "--namespace=default")
+	user := fmt.Sprintf("--user=%s", clientId)
+	cmd := exec.Command("kubectl", "config", "set-context", "kubectl-login-context", user, clusterArg, "--namespace=default")
 	err := cmd.Run()
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatalf("error: cannot set kubectl login context: %v", err)
 	}
 
 	cmd = exec.Command("kubectl", "config", "use-context", "kubectl-login-context")
 	err = cmd.Run()
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatalf("error: cannot switch to kubectl login context: %v", err)
 	}
 }
