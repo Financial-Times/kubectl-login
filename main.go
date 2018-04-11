@@ -86,7 +86,7 @@ func getOpenCmd() string {
 	}
 }
 func getRawConfig() map[string]*Configuration {
-	configPath := os.Getenv("HOME") + "/" + configFile
+	configPath := os.Getenv("HOME") + string(os.PathSeparator) + configFile
 
 	file, err := os.Open(configPath)
 	if err != nil {
