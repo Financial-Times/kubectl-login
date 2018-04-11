@@ -180,7 +180,7 @@ func getToken() string {
 
 	byteToken, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		logger.Fatalf("error: cannot read topen from terminal: %v", err)
+		logger.Fatalf("error: cannot read token from terminal: %v", err)
 	}
 	token := string(byteToken)
 
