@@ -25,11 +25,12 @@ import (
 var logger = log.New(os.Stdout, "", log.LUTC)
 
 const (
-	clientId   = "kubectl-login"
+	clientID   = "kubectl-login"
 	configFile = ".kubectl-login.json"
+	state      = "csrf-protection-state"
 )
 
-type Configuration struct {
+type configuration struct {
 	Issuer      string   `json:"issuer"`
 	RedirectURL string   `json:"redirectUrl"`
 	LoginSecret string   `json:"loginSecret"`
@@ -51,35 +52,21 @@ func main() {
 
 	// Configure the OAuth2 config with the client values.
 	oauth2Config := oauth2.Config{
-		ClientID:     clientId,
+		ClientID:     clientID,
 		ClientSecret: kubeLogin,
 		RedirectURL:  config.RedirectURL,
 		Endpoint:     provider.Endpoint(),                                      // Discovery returns the OAuth2 endpoints.
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups"}, // "openid" is a required scope for OpenID Connect flows.
 	}
 
-	// Create an ID token parser.
-	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientId})
-
-	acu := oauth2Config.AuthCodeURL("some state")
-	switch runtime.GOOS {
-	case "linux":
-		err = exec.Command("xdg-open", acu).Start()
-	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", acu).Start()
-	case "darwin":
-		err = exec.Command("open", acu).Start()
-	default:
-		err = fmt.Errorf("unsupported platform: %v", runtime.GOOS)
-	}
-	if err != nil {
-		logger.Fatalf("error: cannnot open browser: %v", err)
+	if err = openBrowser(oauth2Config.AuthCodeURL(state)); err != nil {
+		logger.Fatalf("error: cannot open browser: %v", err)
 	}
 
+	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientID})
 	rawToken := getToken()
-	_, err = idTokenVerifier.Verify(ctx, rawToken)
-	if err != nil {
-		logger.Fatalf("error: token is invalid: %s\n", err.Error())
+	if _, err = idTokenVerifier.Verify(ctx, rawToken); err != nil {
+		logger.Fatalf("error: token is invalid: %v", err)
 	}
 
 	setCreds(rawToken)
@@ -87,7 +74,22 @@ func main() {
 	notifyAndPrompt()
 }
 
-func getRawConfig() map[string]*Configuration {
+func openBrowser(url string) error {
+	var err error
+	switch runtime.GOOS {
+	case "linux":
+		err = exec.Command("xdg-open", url).Start()
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		err = exec.Command("open", url).Start()
+	default:
+		err = fmt.Errorf("unsupported platform: %v", runtime.GOOS)
+	}
+	return err
+}
+
+func getRawConfig() map[string]*configuration {
 	configPath := os.Getenv("HOME") + string(os.PathSeparator) + configFile
 
 	file, err := os.Open(configPath)
@@ -101,7 +103,7 @@ func getRawConfig() map[string]*Configuration {
 		logger.Fatalf("error: cannot read config file at %s: %v", configPath, err)
 	}
 
-	var cfg map[string]*Configuration
+	var cfg map[string]*configuration
 	err = json.Unmarshal(data, &cfg)
 	if err != nil {
 		closeFile(file)
@@ -127,7 +129,7 @@ func closeFile(f *os.File) {
 	}
 }
 
-func getConfigByAlias(alias string, rawConfig map[string]*Configuration) (*Configuration, string) {
+func getConfigByAlias(alias string, rawConfig map[string]*configuration) (*configuration, string) {
 	for k, v := range rawConfig {
 		if containsAlias(v, alias) {
 			return v, k
@@ -138,7 +140,7 @@ func getConfigByAlias(alias string, rawConfig map[string]*Configuration) (*Confi
 	return nil, ""
 }
 
-func getKubeLogin(config *Configuration) string {
+func getKubeLogin(config *configuration) string {
 	if os.Getenv("KUBELOGIN") != "" {
 		return os.Getenv("KUBELOGIN")
 	} else if config.LoginSecret != "" {
@@ -149,7 +151,7 @@ func getKubeLogin(config *Configuration) string {
 	}
 }
 
-func containsAlias(c *Configuration, s string) bool {
+func containsAlias(c *configuration, s string) bool {
 	for _, val := range c.Aliases {
 		if val == s {
 			return true
@@ -190,7 +192,7 @@ func getToken() string {
 
 func setCreds(token string) {
 	tstr := fmt.Sprintf("--token=%s", token)
-	cmd := exec.Command("kubectl", "config", "set-credentials", clientId, tstr)
+	cmd := exec.Command("kubectl", "config", "set-credentials", clientID, tstr)
 	err := cmd.Run()
 	if err != nil {
 		logger.Fatalf("error: cannot set kubectl credentials: %v", err)
@@ -199,7 +201,7 @@ func setCreds(token string) {
 
 func switchContext(cluster string) {
 	clusterArg := fmt.Sprintf("--cluster=%s", cluster)
-	user := fmt.Sprintf("--user=%s", clientId)
+	user := fmt.Sprintf("--user=%s", clientID)
 	cmd := exec.Command("kubectl", "config", "set-context", "kubectl-login-context", user, clusterArg, "--namespace=default")
 	err := cmd.Run()
 	if err != nil {
