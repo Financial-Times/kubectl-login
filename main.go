@@ -61,10 +61,16 @@ func main() {
 	// Create an ID token parser.
 	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientId})
 
-	if runtime.GOOS == "darwin" {
-		err = exec.Command("open", oauth2Config.AuthCodeURL("some state")).Start()
-	} else {
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", oauth2Config.AuthCodeURL("some state")).Start()
+	acu := oauth2Config.AuthCodeURL("some state")
+	switch runtime.GOOS {
+	case "linux":
+		err = exec.Command("xdg-open", acu).Start()
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", acu).Start()
+	case "darwin":
+		err = exec.Command("open", acu).Start()
+	default:
+		err = fmt.Errorf("unsupported platform: %v", runtime.GOOS)
 	}
 	if err != nil {
 		logger.Fatalf("error: cannnot open browser: %v", err)
@@ -173,7 +179,6 @@ func getToken() string {
 			os.Exit(1)
 		}
 	}()
-
 	byteToken, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		logger.Fatalf("error: cannot read token from terminal: %v", err)
