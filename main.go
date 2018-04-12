@@ -61,10 +61,13 @@ func main() {
 	// Create an ID token parser.
 	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientId})
 
-	cmd := exec.Command(getOpenCmd(), oauth2Config.AuthCodeURL("some state"))
-	err = cmd.Start()
+	if runtime.GOOS == "darwin" {
+		err = exec.Command("open", oauth2Config.AuthCodeURL("some state")).Start()
+	} else {
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", oauth2Config.AuthCodeURL("some state")).Start()
+	}
 	if err != nil {
-		logger.Fatalf("error: cannnot open browser using command %s: %v", getOpenCmd(), err)
+		logger.Fatalf("error: cannnot open browser: %v", err)
 	}
 
 	rawToken := getToken()
@@ -78,13 +81,6 @@ func main() {
 	notifyAndPrompt()
 }
 
-func getOpenCmd() string {
-	if runtime.GOOS == "darwin" {
-		return "open"
-	} else {
-		return "sensible-browser"
-	}
-}
 func getRawConfig() map[string]*Configuration {
 	configPath := os.Getenv("HOME") + string(os.PathSeparator) + configFile
 
