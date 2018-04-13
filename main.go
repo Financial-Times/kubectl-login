@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"log"
@@ -166,6 +167,15 @@ func notifyAndPrompt() {
 }
 
 func getToken() string {
+	switch runtime.GOOS {
+	case "windows":
+		return getTokenClearText()
+	default:
+		return getTokenHidden()
+	}
+}
+
+func getTokenHidden() string {
 	fmt.Print(Cyan("Enter token: "))
 
 	// handle restoring terminal
@@ -188,6 +198,13 @@ func getToken() string {
 	token := string(byteToken)
 
 	return strings.TrimSpace(token)
+}
+
+func getTokenClearText() string {
+	fmt.Print("Enter token: ")
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	return strings.TrimSpace(scanner.Text())
 }
 
 func setCreds(token string) {
