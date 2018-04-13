@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -72,7 +73,33 @@ func main() {
 
 	setCreds(rawToken)
 	switchContext(cluster)
-	notifyAndPrompt()
+	switchConfig(cluster)
+}
+
+func switchConfig(cluster string) {
+	masterKubeconfig := os.Getenv("KUBECONFIG")
+	clusterKubeconfig := masterKubeconfig + "_" + cluster
+	copyConfig(masterKubeconfig, clusterKubeconfig)
+	//output the new kubeconfig path, used in the wrapper to set the env variable
+	logger.Print(clusterKubeconfig)
+}
+
+func copyConfig(srcPath string, dstPath string) {
+	src, err := os.Open(srcPath)
+	if err != nil {
+		logger.Fatalf("error: could not open kubeconfig %s: %v", srcPath, err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(dstPath)
+	if err != nil {
+		logger.Fatalf("error: could not create kubeconfig %s: %v", dstPath, err)
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		logger.Fatalf("error: could not copy kubeconfig %s to %s: %v", srcPath, dstPath, err)
+	}
 }
 
 func openBrowser(url string) error {
@@ -176,8 +203,6 @@ func getToken() string {
 }
 
 func getTokenHidden() string {
-	fmt.Print(Cyan("Enter token: "))
-
 	// handle restoring terminal
 	stdinFd := int(os.Stdin.Fd())
 	state, err := terminal.GetState(stdinFd)
@@ -201,7 +226,6 @@ func getTokenHidden() string {
 }
 
 func getTokenClearText() string {
-	fmt.Print("Enter token: ")
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	return strings.TrimSpace(scanner.Text())

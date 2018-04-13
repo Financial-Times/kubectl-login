@@ -39,3 +39,7 @@
 * Cross compile binary for linux with with `GOOS=linux GOARCH=amd64 go build -o kubectl-login-linux .`
 * Cross compile binary for windows with `GOOS=windows GOARCH=amd64 go build -o kubectl-login-windows.exe .`
 * Upload the binaries to github and create a release
+
+## How to login
+* rename binary to kubectl-login
+* run `source ./wrapper.sh  cluster-x`
