@@ -44,12 +44,19 @@ func main() {
 	alias := getAlias()
 	config, cluster := getConfigByAlias(alias, rawConfig)
 
-	if isCurrentContext(cluster) && isLoggedIn() {
-		logger.Printf("Already logged in to cluster %s", cluster)
-		//exit with error code so wrapper script will output this message
-		os.Exit(1)
+	currentKubeconfig := os.Getenv("KUBECONFIG")
+	masterKubeconfig := currentKubeconfig
+	if !isMasterConfig(currentKubeconfig) {
+		if isCurrentContext(cluster) && isLoggedIn() {
+			logger.Printf("Already logged in to cluster %s", cluster)
+			//exit with error code so wrapper script will output this message
+			os.Exit(1)
+		} else {
+			masterKubeconfig = strings.Split(currentKubeconfig, "_")[0]
+		}
 	}
 
+	newKubeconfig := switchConfig(masterKubeconfig, cluster)
 	kubeLogin := getKubeLogin(config)
 	ctx := context.Background()
 
@@ -78,20 +85,23 @@ func main() {
 		logger.Fatalf("error: token is invalid: %v", err)
 	}
 
-	setCreds(rawToken)
-	switchContext(cluster)
-	switchConfig(cluster)
+	setCreds(rawToken, newKubeconfig)
+	switchContext(cluster, newKubeconfig)
 	if !isLoggedIn() {
 		logger.Fatal("error: kubectl command didn't work, even after login!")
 	}
+	//output the new kubeconfig path, used in the wrapper to set the env variable
+	logger.Printf(newKubeconfig)
 }
 
-func switchConfig(cluster string) {
-	masterKubeconfig := os.Getenv("KUBECONFIG")
-	clusterKubeconfig := masterKubeconfig + "_" + cluster
-	copyConfig(masterKubeconfig, clusterKubeconfig)
-	//output the new kubeconfig path, used in the wrapper to set the env variable
-	logger.Print(clusterKubeconfig)
+func isMasterConfig(kubeconfigPath string) bool {
+	return !strings.Contains(kubeconfigPath, "_")
+}
+
+func switchConfig(masterConfig, cluster string) string {
+	clusterKubeconfig := masterConfig + "_" + cluster
+	copyConfig(masterConfig, clusterKubeconfig)
+	return clusterKubeconfig
 }
 
 func copyConfig(srcPath string, dstPath string) {
@@ -236,19 +246,21 @@ func getTokenClearText() string {
 	return strings.TrimSpace(scanner.Text())
 }
 
-func setCreds(token string) {
+func setCreds(token, config string) {
 	tstr := fmt.Sprintf("--token=%s", token)
-	cmd := exec.Command("kubectl", "config", "set-credentials", clientID, tstr)
+	cfg := fmt.Sprintf("--kubeconfig=%s", config)
+	cmd := exec.Command("kubectl", "config", "set-credentials", clientID, tstr, cfg)
 	err := cmd.Run()
 	if err != nil {
 		logger.Fatalf("error: cannot set kubectl credentials: %v", err)
 	}
 }
 
-func switchContext(cluster string) {
+func switchContext(cluster, config string) {
 	clusterArg := fmt.Sprintf("--cluster=%s", cluster)
 	user := fmt.Sprintf("--user=%s", clientID)
-	cmd := exec.Command("kubectl", "config", "set-context", "kubectl-login-context", user, clusterArg, "--namespace=default")
+	cfg := fmt.Sprintf("--kubeconfig=%s", config)
+	cmd := exec.Command("kubectl", "config", "set-context", "kubectl-login-context", user, clusterArg, "--namespace=default", cfg)
 	err := cmd.Run()
 	if err != nil {
 		logger.Fatalf("error: cannot set kubectl login context: %v", err)
