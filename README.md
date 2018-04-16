@@ -42,4 +42,4 @@
 
 ## How to login
 * rename binary to kubectl-login
-* run `source ./wrapper.sh  cluster-x`
+* run `source ./kubectl-login.sh  cluster-x` or `. ./kubectl-login.sh  cluster-x`
