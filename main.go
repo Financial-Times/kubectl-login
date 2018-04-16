@@ -46,6 +46,7 @@ func main() {
 
 	if isCurrentContext(cluster) && isLoggedIn() {
 		logger.Printf("Already logged in to cluster %s", cluster)
+		//exit with error code so wrapper script will output this message
 		os.Exit(1)
 	}
 
@@ -80,6 +81,9 @@ func main() {
 	setCreds(rawToken)
 	switchContext(cluster)
 	switchConfig(cluster)
+	if !isLoggedIn() {
+		logger.Fatal("error: kubectl command didn't work, even after login!")
+	}
 }
 
 func switchConfig(cluster string) {
@@ -192,11 +196,6 @@ func containsAlias(c *configuration, s string) bool {
 		}
 	}
 	return false
-}
-
-func notifyAndPrompt() {
-	fmt.Printf("\nLogged in. Now try `%s` to get your context or '%s' to get started.\n",
-		Cyan("kubectl config get-contexts"), Cyan("kubectl get pods"))
 }
 
 func getToken() string {
