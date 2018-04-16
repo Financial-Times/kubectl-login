@@ -43,6 +43,12 @@ func main() {
 	rawConfig := getRawConfig()
 	alias := getAlias()
 	config, cluster := getConfigByAlias(alias, rawConfig)
+
+	if isCurrentContext(cluster) && isLoggedIn() {
+		logger.Printf("Already logged in to cluster %s", cluster)
+		os.Exit(1)
+	}
+
 	kubeLogin := getKubeLogin(config)
 	ctx := context.Background()
 
@@ -254,4 +260,19 @@ func switchContext(cluster string) {
 	if err != nil {
 		logger.Fatalf("error: cannot switch to kubectl login context: %v", err)
 	}
+}
+
+func isCurrentContext(cluster string) bool {
+	output, err := exec.Command("kubectl", "config", "view",
+		`--output=jsonpath='{.contexts[?(@.name == "kubectl-login-context")].context.cluster}'`).CombinedOutput()
+	if err != nil {
+		fmt.Printf("error: cannot check current context: %v\n", err)
+	}
+	currentContext := strings.Trim(string(output), "'")
+	return currentContext == cluster
+}
+
+func isLoggedIn() bool {
+	err := exec.Command("kubectl", "get", "configmap").Run()
+	return err == nil
 }
