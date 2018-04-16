@@ -1,5 +1,4 @@
-kubectl-login
-kubectl-login-linux
+kubectl-login-*
 .idea/
 *.exe
 vendor/

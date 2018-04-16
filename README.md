@@ -35,11 +35,14 @@
 ## Run dep ensure
 `dep ensure`
 
-## Compile binaries
-* Cross compile binary for linux with with `GOOS=linux GOARCH=amd64 go build -o kubectl-login-linux .`
-* Cross compile binary for windows with `GOOS=windows GOARCH=amd64 go build -o kubectl-login-windows.exe .`
-* Upload the binaries to github and create a release
+## Release
+### Build binaries
+* `GOOS=linux GOARCH=amd64 go build -o kubectl-login-linux .`
+* `GOOS=darwin GOARCH=amd64 go build -o kubectl-login-darwin .`
+* `GOOS=windows GOARCH=amd64 go build -o kubectl-login-windows.exe .`
+### Create Github Release
+* Upload the binaries on the release
 
-## How to login
+## How to use
 * rename binary to kubectl-login
 * run `source ./kubectl-login.sh  cluster-x` or `. ./kubectl-login.sh  cluster-x`
