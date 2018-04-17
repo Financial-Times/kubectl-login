@@ -41,7 +41,7 @@ type configuration struct {
 
 func main() {
 	rawConfig := getRawConfig()
-	alias := getAlias()
+	alias := getAlias(os.Args[1:])
 	config, cluster := getConfigByAlias(alias, rawConfig)
 
 	currentKubeconfig := os.Getenv("KUBECONFIG")
@@ -162,8 +162,7 @@ func getRawConfig() map[string]*configuration {
 	return cfg
 }
 
-func getAlias() string {
-	args := os.Args[1:]
+func getAlias(args []string) string {
 	if len(args) == 0 {
 		logger.Fatalf("Alias is mandatory i.e %s. try '%s' to get this value.",
 			Bold(Cyan("kubectl-login <ALIAS>")), Bold(Cyan("cat $HOME/"+configFile)))
