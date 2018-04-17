@@ -95,7 +95,7 @@ func main() {
 }
 
 func isMasterConfig(kubeconfigPath string) bool {
-	return !strings.Contains(kubeconfigPath, "_")
+	return len(kubeconfigPath) > 0 && !strings.Contains(kubeconfigPath, "_")
 }
 
 func switchConfig(masterConfig, cluster string) string {
