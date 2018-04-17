@@ -47,7 +47,7 @@ func main() {
 	currentKubeconfig := os.Getenv("KUBECONFIG")
 	masterKubeconfig := currentKubeconfig
 	if !isMasterConfig(currentKubeconfig) {
-		if isCurrentContext(cluster) && isLoggedIn() {
+		if isCurrentContext(cluster) && isLoggedIn(currentKubeconfig) {
 			logger.Printf("Already logged in to cluster %s", cluster)
 			//exit with error code so wrapper script will output this message
 			os.Exit(1)
@@ -87,7 +87,7 @@ func main() {
 
 	setCreds(rawToken, newKubeconfig)
 	switchContext(cluster, newKubeconfig)
-	if !isLoggedIn() {
+	if !isLoggedIn(newKubeconfig) {
 		logger.Fatal("error: kubectl command didn't work, even after login!")
 	}
 	//output the new kubeconfig path, used in the wrapper to set the env variable
@@ -283,7 +283,11 @@ func isCurrentContext(cluster string) bool {
 	return currentContext == cluster
 }
 
-func isLoggedIn() bool {
-	err := exec.Command("kubectl", "get", "configmap").Run()
+func isLoggedIn(config string) bool {
+	cfg := fmt.Sprintf("--kubeconfig=%s", config)
+	err := exec.Command("kubectl", "get", "configmap", cfg).Run()
+	if err != nil {
+		logger.Fatal(err)
+	}
 	return err == nil
 }
