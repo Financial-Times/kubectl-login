@@ -41,8 +41,8 @@
 * `GOOS=darwin GOARCH=amd64 go build -o kubectl-login-darwin .`
 * `GOOS=windows GOARCH=amd64 go build -o kubectl-login-windows.exe .`
 ### Create Github Release
-* Upload the binaries on the release
+* Upload the binaries and the cluster-login.sh on the release
 
-## How to use
-* rename binary to kubectl-login
-* run `source ./kubectl-login.sh  cluster-x` or `. ./kubectl-login.sh  cluster-x`
+## How to use locally
+* rename binary to kubectl-login and put in on your PATH
+* run `source ./cluster-login.sh  cluster-x` or `. ./cluster-login.sh  cluster-x`

@@ -1,5 +1,5 @@
 #!/bin/bash
-output=$(./kubectl-login $1)
+output=$(kubectl-login $1)
 if [ $? -eq 0  ]
 then
     export KUBECONFIG=${output}
