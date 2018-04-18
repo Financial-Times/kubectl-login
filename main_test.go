@@ -1,10 +1,13 @@
 package main
 
 import (
+	"io/ioutil"
 	"os/exec"
 	"testing"
 
 	"os"
+
+	"encoding/json"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -46,6 +49,54 @@ func TestCopyConfig(t *testing.T) {
 func TestGetRawConfig(t *testing.T) {
 
 }
+
+func TestGetRawConfigFileNotFound(t *testing.T) {
+	if os.Getenv("CRASH") == "true" {
+		getRawConfig()
+		return
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetRawConfigFileNotFound")
+	cmd.Env = append(os.Environ(), "CRASH=true")
+	cmd.Env = append(cmd.Env, "HOME=.")
+	err := cmd.Run()
+	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
+		return
+	}
+	t.Fatal("getRawConfig should exit on config file not found")
+}
+
+func TestGetRawConfigInvalidContents(t *testing.T) {
+	if os.Getenv("CRASH") == "true" {
+		file, _ := ioutil.TempFile(os.TempDir(), "prefix")
+		defer os.Remove(file.Name())
+		file.Write([]byte("this is not a {valid} json content"))
+		file.Sync()
+		getRawConfig()
+		return
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetRawConfigFileNotFound")
+	cmd.Env = append(os.Environ(), "CRASH=true", "HOME="+os.TempDir())
+	err := cmd.Run()
+	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
+		return
+	}
+	t.Fatal("getRawConfig should exit on invalid config file contents")
+}
+
+func TestGetRawConfigValidConfig(t *testing.T) {
+	testConfigFile := os.TempDir() + string(os.PathSeparator) + configFile
+	marshaledConfig, _ := json.Marshal(validConfig)
+	ioutil.WriteFile(testConfigFile, marshaledConfig, 0644)
+	defer os.Remove(testConfigFile)
+
+	originalHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", originalHome)
+	os.Setenv("HOME", os.TempDir())
+
+	actualConfig := getRawConfig()
+	assert.Equal(t, validConfig, actualConfig)
+}
+
 func TestGetAliasSuccessfully(t *testing.T) {
 	var testCases = []struct {
 		args          []string
@@ -224,3 +275,17 @@ func TestContainsAlias(t *testing.T) {
 		assert.Equal(t, tc.expectedResult, actualResult)
 	}
 }
+
+var validConfig = map[string]*configuration{
+	"config1": {
+		Issuer:      "https://upp-k8s-cluster.ft.com",
+		RedirectURL: "https://cluster-redirect.ft.com/callback",
+		LoginSecret: "terces",
+		Aliases:     []string{"alias1", "alias2"},
+	},
+	"config2": {
+		Issuer:      "https://upp-k8s-cluster2.ft.com",
+		RedirectURL: "https://cluster-redirect2.ft.com/callback",
+		LoginSecret: "2terces",
+		Aliases:     []string{"alias3", "alias4"},
+	}}
