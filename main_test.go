@@ -41,8 +41,24 @@ func TestIsMasterConfig(t *testing.T) {
 }
 
 func TestSwitchConfig(t *testing.T) {
+	src, _ := ioutil.TempFile(os.TempDir(), "test")
+	defer os.Remove(src.Name())
+	expectedData, _ := json.Marshal(validConfig)
+	src.Write(expectedData)
 
+	masterConfig := src.Name()
+	clusterConfig := switchConfig(masterConfig, "cluster-test")
+
+	assert.True(t, clusterConfig == masterConfig+"_cluster-test")
+
+	actualData, err := ioutil.ReadFile(clusterConfig)
+	if err != nil {
+		t.Fatalf("cannot read cluster config")
+	}
+	assert.Equal(t, expectedData, actualData)
+	os.Remove(clusterConfig)
 }
+
 func TestCopyConfigSuccess(t *testing.T) {
 	src, _ := ioutil.TempFile(os.TempDir(), "test")
 	defer os.Remove(src.Name())
