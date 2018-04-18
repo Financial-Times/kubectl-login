@@ -43,11 +43,53 @@ func TestIsMasterConfig(t *testing.T) {
 func TestSwitchConfig(t *testing.T) {
 
 }
-func TestCopyConfig(t *testing.T) {
+func TestCopyConfigSuccess(t *testing.T) {
+	src, _ := ioutil.TempFile(os.TempDir(), "test")
+	defer os.Remove(src.Name())
+	expectedData, _ := json.Marshal(validConfig)
+	src.Write(expectedData)
 
+	dst := os.TempDir() + string(os.PathSeparator) + "test_dst"
+	defer os.Remove(dst)
+
+	copyConfig(src.Name(), dst)
+
+	actualData, err := ioutil.ReadFile(dst)
+	if err != nil {
+		t.Fatalf("cannot read destination file")
+	}
+
+	assert.Equal(t, expectedData, actualData)
 }
-func TestGetRawConfig(t *testing.T) {
 
+func TestCopyConfigWrongSrcPath(t *testing.T) {
+	if os.Getenv("CRASH") == "true" {
+		copyConfig("", "")
+		return
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=TestCopyConfigWrongSrcPath")
+	cmd.Env = append(os.Environ(), "CRASH=true")
+	err := cmd.Run()
+	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
+		return
+	}
+	t.Fatal("copyConfig should exit if cannot open source file")
+}
+
+func TestCopyConfigWrongDstPath(t *testing.T) {
+	if os.Getenv("CRASH") == "true" {
+		file, _ := ioutil.TempFile(os.TempDir(), "prefix")
+		defer os.Remove(file.Name())
+		copyConfig(file.Name(), "")
+		return
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=TestCopyConfigWrongDstPath")
+	cmd.Env = append(os.Environ(), "CRASH=true")
+	err := cmd.Run()
+	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
+		return
+	}
+	t.Fatal("copyConfig should exit if cannot create destination file")
 }
 
 func TestGetRawConfigFileNotFound(t *testing.T) {
