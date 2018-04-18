@@ -146,8 +146,45 @@ func TestGetConfigByAliasSuccessCases(t *testing.T) {
 	}
 }
 
-func TestGetKubeLogin(t *testing.T) {
+func TestGetKubeLoginNotSet(t *testing.T) {
+	if os.Getenv("CRASH") == "true" {
+		getKubeLogin(&configuration{})
+		return
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetKubeLoginNotSet")
+	cmd.Env = append(os.Environ(), "CRASH=true")
+	err := cmd.Run()
+	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
+		return
+	}
+	t.Fatal("getKubeLogin should exit on kubelogin not founds")
+}
 
+func TestGetKubeLoginSuccessCases(t *testing.T) {
+	var testCases = []struct {
+		config            *configuration
+		envVar            string
+		expectedKubeLogin string
+	}{
+		{
+			config:            &configuration{LoginSecret: "secret1"},
+			envVar:            "",
+			expectedKubeLogin: "secret1",
+		},
+		{
+			config:            &configuration{LoginSecret: ""},
+			envVar:            "secret1",
+			expectedKubeLogin: "secret1",
+		},
+	}
+	for _, tc := range testCases {
+		if len(tc.envVar) > 0 {
+			os.Setenv("KUBELOGIN", tc.expectedKubeLogin)
+		}
+		actualKubeLogin := getKubeLogin(tc.config)
+		assert.Equal(t, tc.expectedKubeLogin, actualKubeLogin)
+		os.Unsetenv("KUBELOGIN")
+	}
 }
 
 func TestContainsAlias(t *testing.T) {
