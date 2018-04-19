@@ -72,7 +72,7 @@ func main() {
 		ClientSecret: kubeLogin,
 		RedirectURL:  config.RedirectURL,
 		Endpoint:     provider.Endpoint(),                                      // Discovery returns the OAuth2 endpoints.
-		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups"}, // "openid" is a required scope for OpenID Connect flows.
+		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups", "offline_access"}, // "openid" is a required scope for OpenID Connect flows.
 	}
 
 	if err = openBrowser(oauth2Config.AuthCodeURL(state)); err != nil {
