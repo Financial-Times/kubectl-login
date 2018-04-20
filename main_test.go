@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
 
 func TestIsMasterConfig(t *testing.T) {
@@ -334,6 +335,73 @@ func TestContainsAlias(t *testing.T) {
 	}
 }
 
+func TestSetCreds(t *testing.T) {
+	if os.Getenv("KUBECTL_AVAILABLE") == "FALSE" {
+		t.Skip("skipping test: kubectl is not available")
+	}
+
+	kubeConfig, _ := ioutil.TempFile(os.TempDir(), "test")
+	defer os.Remove(kubeConfig.Name())
+	kubeConfig.Write([]byte(testKubeconfig))
+	kubeConfig.Sync()
+
+	expectedToken := "WQ1NDZiOGZkMTA4NWFkMzExZ"
+	setCreds(expectedToken, kubeConfig.Name())
+
+	newKubeconfigRaw, _ := ioutil.ReadFile(kubeConfig.Name())
+	newKubeconfig := parse(newKubeconfigRaw, t)
+	assert.True(t, len(newKubeconfig.Users) > 0)
+	assert.Equal(t, expectedToken, newKubeconfig.Users[0].UserData.Token)
+}
+
+func TestSetSwitchContext(t *testing.T) {
+	if os.Getenv("KUBECTL_AVAILABLE") == "FALSE" {
+		t.Skip("skipping test: kubectl is not available")
+	}
+
+	kubeConfig, _ := ioutil.TempFile(os.TempDir(), "test")
+	defer os.Remove(kubeConfig.Name())
+	kubeConfig.Write([]byte(testKubeconfig))
+	kubeConfig.Sync()
+
+	expectedCluster := "k8s-test-publishing-cluster"
+	switchContext(expectedCluster, kubeConfig.Name())
+
+	newKubeconfigRaw, _ := ioutil.ReadFile(kubeConfig.Name())
+	newKubeconfig := parse(newKubeconfigRaw, t)
+	assert.True(t, len(newKubeconfig.Contexts) > 0)
+	contextFound := false
+	for _, c := range newKubeconfig.Contexts {
+		if c.Name == "kubectl-login-context" {
+			assert.Equal(t, expectedCluster, c.ContextData.ClusterName)
+			contextFound = true
+			break
+		}
+	}
+	assert.True(t, contextFound)
+}
+
+func TestIsCurrentContext(t *testing.T) {
+	if os.Getenv("KUBECTL_AVAILABLE") == "FALSE" {
+		t.Skip("skipping test: kubectl is not available")
+	}
+	kubeconfigPath := os.Getenv("KUBECONFIG")
+	if kubeconfigPath == "" {
+		t.Skip("skipping test: KUBECONFIG environment variable is empty")
+	}
+
+	kubeconfigRaw, _ := ioutil.ReadFile(kubeconfigPath)
+	kubeconfig := parse(kubeconfigRaw, t)
+	expectedCurrentCluster := ""
+	for _, c := range kubeconfig.Contexts {
+		if c.Name == "kubectl-login-context" {
+			expectedCurrentCluster = c.ContextData.ClusterName
+		}
+	}
+	isCurrentContext := isCurrentContext(expectedCurrentCluster)
+	assert.True(t, isCurrentContext)
+}
+
 var validConfig = map[string]*configuration{
 	"config1": {
 		Issuer:      "https://upp-k8s-cluster.ft.com",
@@ -347,3 +415,85 @@ var validConfig = map[string]*configuration{
 		LoginSecret: "2terces",
 		Aliases:     []string{"alias3", "alias4"},
 	}}
+
+const testKubeconfig = `
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: ca.pem
+    server: https://test-delivery.ft.com
+  name: k8s-test-delivery-cluster
+- cluster:
+    certificate-authority: ca.pem
+    server: https://test-publishing.ft.com
+  name: k8s-test-publishing-cluster
+contexts:
+- context:
+    cluster: k8s-test-delivery-cluster
+    namespace: default
+    user: ""
+  name: k8s-test-delivery-context
+- context:
+    cluster: k8s-test-publishing-cluster
+    namespace: default
+    user: ""
+  name: k8s-test-publishing-context
+- context:
+    cluster: random
+    namespace: default
+    user: kubectl-login
+  name: kubectl-login-context
+current-context: kubectl-login-context
+kind: Config
+preferences: {}
+users:
+- name: kubectl-login
+  user:
+    token: foobar
+`
+
+type KubeConfig struct {
+	ApiVersion     string    `yaml:"apiVersion"`
+	Clusters       []Cluster `yaml:"clusters"`
+	Contexts       []Context `yaml:"contexts"`
+	CurrentContext string    `yaml:"current-context"`
+	Kind           string    `yaml:"kind"`
+	Users          []User    `yaml:"users"`
+}
+
+type User struct {
+	Name     string   `yaml:"name"`
+	UserData UserData `yaml:"user"`
+}
+
+type UserData struct {
+	Token string `yaml:"token"`
+}
+type Cluster struct {
+	Name        string      `yaml:"name"`
+	ClusterData ClusterData `yaml:"cluster"`
+}
+
+type ClusterData struct {
+	CertificateAuthority string `yaml:"certificate-authority"`
+	Server               string `yaml:"server"`
+}
+
+type Context struct {
+	Name        string      `yaml:"name"`
+	ContextData ContextData `yaml:"context"`
+}
+
+type ContextData struct {
+	ClusterName string `yaml:"cluster"`
+	Namespace   string `yaml:"namespace"`
+	User        string `yaml:"user"`
+}
+
+func parse(rawConfig []byte, t *testing.T) KubeConfig {
+	var config KubeConfig
+	if err := yaml.Unmarshal(rawConfig, &config); err != nil {
+		t.Fatal(err)
+	}
+	return config
+}

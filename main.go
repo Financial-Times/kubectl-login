@@ -265,7 +265,7 @@ func switchContext(cluster, config string) {
 		logger.Fatalf("error: cannot set kubectl login context: %v", err)
 	}
 
-	cmd = exec.Command("kubectl", "config", "use-context", "kubectl-login-context")
+	cmd = exec.Command("kubectl", "config", "use-context", "kubectl-login-context", cfg)
 	err = cmd.Run()
 	if err != nil {
 		logger.Fatalf("error: cannot switch to kubectl login context: %v", err)
