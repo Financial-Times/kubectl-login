@@ -41,7 +41,7 @@ type configuration struct {
 
 func main() {
 	rawConfig := getRawConfig()
-	alias := getAlias()
+	alias := getAlias(os.Args[1:])
 	config, cluster := getConfigByAlias(alias, rawConfig)
 
 	currentKubeconfig := os.Getenv("KUBECONFIG")
@@ -95,7 +95,7 @@ func main() {
 }
 
 func isMasterConfig(kubeconfigPath string) bool {
-	return !strings.Contains(kubeconfigPath, "_")
+	return len(kubeconfigPath) > 0 && !strings.Contains(kubeconfigPath, "_")
 }
 
 func switchConfig(masterConfig, cluster string) string {
@@ -162,8 +162,7 @@ func getRawConfig() map[string]*configuration {
 	return cfg
 }
 
-func getAlias() string {
-	args := os.Args[1:]
+func getAlias(args []string) string {
 	if len(args) == 0 {
 		logger.Fatalf("Alias is mandatory i.e %s. try '%s' to get this value.",
 			Bold(Cyan("kubectl-login <ALIAS>")), Bold(Cyan("cat $HOME/"+configFile)))
@@ -266,7 +265,7 @@ func switchContext(cluster, config string) {
 		logger.Fatalf("error: cannot set kubectl login context: %v", err)
 	}
 
-	cmd = exec.Command("kubectl", "config", "use-context", "kubectl-login-context")
+	cmd = exec.Command("kubectl", "config", "use-context", "kubectl-login-context", cfg)
 	err = cmd.Run()
 	if err != nil {
 		logger.Fatalf("error: cannot switch to kubectl login context: %v", err)

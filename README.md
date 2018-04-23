@@ -1,5 +1,6 @@
 # kubectl-login
 
+[![Circle CI](https://circleci.com/gh/Financial-Times/kubectl-login/tree/master.png?style=shield)](https://circleci.com/gh/Financial-Times/kubectl-login/tree/master)[![Go Report Card](https://goreportcard.com/badge/github.com/Financial-Times/kubectl-login)](https://goreportcard.com/report/github.com/Financial-Times/kubectl-login) [![Coverage Status](https://coveralls.io/repos/github/Financial-Times/kubectl-login/badge.svg)](https://coveralls.io/github/Financial-Times/kubectl-login)
 
 ## Config file
 
