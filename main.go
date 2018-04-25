@@ -285,8 +285,5 @@ func isCurrentContext(cluster string) bool {
 func isLoggedIn(config string) bool {
 	cfg := fmt.Sprintf("--kubeconfig=%s", config)
 	err := exec.Command("kubectl", "get", "configmap", cfg).Run()
-	if err != nil {
-		logger.Fatal(err)
-	}
 	return err == nil
 }
