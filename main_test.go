@@ -178,32 +178,32 @@ func TestGetAliasSuccessfully(t *testing.T) {
 
 func TestExtractTokens(t *testing.T) {
 	var testCases = []struct {
-		input          string
-		expectedIdToken string
+		input                string
+		expectedIdToken      string
 		expectedRefreshToken string
 	}{
 		{
 			/*	idtoken + refresh token */
-			input:          "gghhhgg.fff.ssssss;hjhklkjh",
-			expectedIdToken: "gghhhgg.fff.ssssss",
+			input:                "gghhhgg.fff.ssssss;hjhklkjh",
+			expectedIdToken:      "gghhhgg.fff.ssssss",
 			expectedRefreshToken: "hjhklkjh",
 		},
 		{
 			/*	idtoken only	*/
-			input:          "gghhhgg.fff.ssssss",
-			expectedIdToken: "gghhhgg.fff.ssssss",
+			input:                "gghhhgg.fff.ssssss",
+			expectedIdToken:      "gghhhgg.fff.ssssss",
 			expectedRefreshToken: "",
 		},
 		{
 			/*	empty input*/
-			input:          "",
-			expectedIdToken: "",
+			input:                "",
+			expectedIdToken:      "",
 			expectedRefreshToken: "",
 		},
 		{
 			/*	more than 3 tokens included. one is unknown, but we should ignore it */
-			input:          "gghhhgg.fff.ssssss;hjhklkjh;jllllkkkkkddd",
-			expectedIdToken: "gghhhgg.fff.ssssss",
+			input:                "gghhhgg.fff.ssssss;hjhklkjh;jllllkkkkkddd",
+			expectedIdToken:      "gghhhgg.fff.ssssss",
 			expectedRefreshToken: "hjhklkjh",
 		},
 	}

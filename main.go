@@ -27,10 +27,10 @@ import (
 var logger = log.New(os.Stdout, "", log.LUTC)
 
 const (
-	clientID     = "kubectl-login"
-	configFile   = ".kubectl-login.json"
-	state        = "csrf-protection-state"
-	oidcProvider = "oidc"
+	clientID        = "kubectl-login"
+	configFile      = ".kubectl-login.json"
+	state           = "csrf-protection-state"
+	oidcProvider    = "oidc"
 	tokensSeparator = ";"
 )
 
