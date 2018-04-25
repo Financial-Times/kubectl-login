@@ -176,6 +176,44 @@ func TestGetAliasSuccessfully(t *testing.T) {
 	}
 }
 
+func TestExtractTokens(t *testing.T) {
+	var testCases = []struct {
+		input          string
+		expectedIdToken string
+		expectedRefreshToken string
+	}{
+		{
+			/*	idtoken + refresh token */
+			input:          "gghhhgg.fff.ssssss;hjhklkjh",
+			expectedIdToken: "gghhhgg.fff.ssssss",
+			expectedRefreshToken: "hjhklkjh",
+		},
+		{
+			/*	idtoken only	*/
+			input:          "gghhhgg.fff.ssssss",
+			expectedIdToken: "gghhhgg.fff.ssssss",
+			expectedRefreshToken: "",
+		},
+		{
+			/*	empty input*/
+			input:          "",
+			expectedIdToken: "",
+			expectedRefreshToken: "",
+		},
+		{
+			/*	more than 3 tokens included. one is unknown, but we should ignore it */
+			input:          "gghhhgg.fff.ssssss;hjhklkjh;jllllkkkkkddd",
+			expectedIdToken: "gghhhgg.fff.ssssss",
+			expectedRefreshToken: "hjhklkjh",
+		},
+	}
+	for _, tc := range testCases {
+		actualIdToken, actualRefreshToken := extractTokens(tc.input)
+		assert.Equal(t, tc.expectedIdToken, actualIdToken)
+		assert.Equal(t, tc.expectedRefreshToken, actualRefreshToken)
+	}
+}
+
 func TestGetAliasFailure(t *testing.T) {
 	if os.Getenv("CRASH") == "true" {
 		getAlias([]string{})

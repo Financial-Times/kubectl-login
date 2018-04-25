@@ -31,6 +31,7 @@ const (
 	configFile   = ".kubectl-login.json"
 	state        = "csrf-protection-state"
 	oidcProvider = "oidc"
+	tokensSeparator = ";"
 )
 
 type configuration struct {
@@ -81,7 +82,8 @@ func main() {
 	}
 
 	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientID})
-	rawIdToken, refreshToken := getTokens()
+	tokensInput := readTokensInput()
+	rawIdToken, refreshToken := extractTokens(tokensInput)
 	if _, err = idTokenVerifier.Verify(ctx, rawIdToken); err != nil {
 		logger.Fatalf("error: token is invalid: %v", err)
 	}
@@ -213,17 +215,18 @@ func containsAlias(c *configuration, s string) bool {
 	return false
 }
 
-func getTokens() (string, string) {
-	var combTkns string
+func readTokensInput() string {
 	switch runtime.GOOS {
 	case "windows":
-		combTkns = getTokenClearText()
+		return readTokensClearText()
 	default:
-		combTkns = getTokenHidden()
+		return readTokensHidden()
 	}
+}
 
+func extractTokens(combTkns string) (string, string) {
 	/*	dex-redirect will combine the id token with the refresh token into a single string separated by ";" */
-	tkns := strings.Split(combTkns, ";")
+	tkns := strings.Split(combTkns, tokensSeparator)
 	if len(tkns) == 1 {
 		return tkns[0], ""
 	} else {
@@ -231,7 +234,7 @@ func getTokens() (string, string) {
 	}
 }
 
-func getTokenHidden() string {
+func readTokensHidden() string {
 	// handle restoring terminal
 	stdinFd := int(os.Stdin.Fd())
 	state, err := terminal.GetState(stdinFd)
@@ -254,7 +257,7 @@ func getTokenHidden() string {
 	return strings.TrimSpace(token)
 }
 
-func getTokenClearText() string {
+func readTokensClearText() string {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	return strings.TrimSpace(scanner.Text())
