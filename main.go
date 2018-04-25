@@ -27,9 +27,10 @@ import (
 var logger = log.New(os.Stdout, "", log.LUTC)
 
 const (
-	clientID   = "kubectl-login"
-	configFile = ".kubectl-login.json"
-	state      = "csrf-protection-state"
+	clientID     = "kubectl-login"
+	configFile   = ".kubectl-login.json"
+	state        = "csrf-protection-state"
+	oidcProvider = "oidc"
 )
 
 type configuration struct {
@@ -71,7 +72,7 @@ func main() {
 		ClientID:     clientID,
 		ClientSecret: kubeLogin,
 		RedirectURL:  config.RedirectURL,
-		Endpoint:     provider.Endpoint(),                                      // Discovery returns the OAuth2 endpoints.
+		Endpoint:     provider.Endpoint(),                                                        // Discovery returns the OAuth2 endpoints.
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups", "offline_access"}, // "openid" is a required scope for OpenID Connect flows.
 	}
 
@@ -80,12 +81,17 @@ func main() {
 	}
 
 	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientID})
-	rawToken := getToken()
-	if _, err = idTokenVerifier.Verify(ctx, rawToken); err != nil {
+	rawIdToken, refreshToken := getTokens()
+	if _, err = idTokenVerifier.Verify(ctx, rawIdToken); err != nil {
 		logger.Fatalf("error: token is invalid: %v", err)
 	}
 
-	setCreds(rawToken, newKubeconfig)
+	if len(refreshToken) == 0 {
+		setIdTokenCreds(rawIdToken, newKubeconfig)
+	} else {
+		setOIDCAuth(kubeLogin, rawIdToken, refreshToken, config.Issuer, newKubeconfig)
+	}
+
 	switchContext(cluster, newKubeconfig)
 	if !isLoggedIn(newKubeconfig) {
 		logger.Fatal("error: kubectl command didn't work, even after login!")
@@ -207,12 +213,21 @@ func containsAlias(c *configuration, s string) bool {
 	return false
 }
 
-func getToken() string {
+func getTokens() (string, string) {
+	var combTkns string
 	switch runtime.GOOS {
 	case "windows":
-		return getTokenClearText()
+		combTkns = getTokenClearText()
 	default:
-		return getTokenHidden()
+		combTkns = getTokenHidden()
+	}
+
+	/*	dex-redirect will combine the id token with the refresh token into a single string separated by ";" */
+	tkns := strings.Split(combTkns, ";")
+	if len(tkns) == 1 {
+		return tkns[0], ""
+	} else {
+		return tkns[0], tkns[1]
 	}
 }
 
@@ -245,13 +260,36 @@ func getTokenClearText() string {
 	return strings.TrimSpace(scanner.Text())
 }
 
-func setCreds(token, config string) {
+func setIdTokenCreds(token, config string) {
 	tstr := fmt.Sprintf("--token=%s", token)
 	cfg := fmt.Sprintf("--kubeconfig=%s", config)
 	cmd := exec.Command("kubectl", "config", "set-credentials", clientID, tstr, cfg)
 	err := cmd.Run()
 	if err != nil {
 		logger.Fatalf("error: cannot set kubectl credentials: %v", err)
+	}
+}
+
+func setOIDCAuth(clientSecret, idToken, refreshToken, idpIssuerUrl, config string) {
+	cfg := fmt.Sprintf("--kubeconfig=%s", config)
+	authProv := fmt.Sprintf("--auth-provider=%s", oidcProvider)
+	authProvIdp := fmt.Sprintf("--auth-provider-arg=idp-issuer-url=%s", idpIssuerUrl)
+	authProvClientId := fmt.Sprintf("--auth-provider-arg=client-id=%s", clientID)
+	authProvClientSecret := fmt.Sprintf("--auth-provider-arg=client-secret=%s", clientSecret)
+	authProvIdToken := fmt.Sprintf("--auth-provider-arg=id-token=%s", idToken)
+	authProvRefreshToken := fmt.Sprintf("--auth-provider-arg=refresh-token=%s", refreshToken)
+
+	cmd := exec.Command("kubectl", "config", "set-credentials", clientID,
+		cfg,
+		authProv,
+		authProvIdp,
+		authProvClientId,
+		authProvClientSecret,
+		authProvIdToken,
+		authProvRefreshToken)
+	err := cmd.Run()
+	if err != nil {
+		logger.Fatalf("error: cannot set kubectl OIDC credentials: %v", err)
 	}
 }
 
