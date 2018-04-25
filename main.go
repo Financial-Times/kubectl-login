@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -40,8 +41,22 @@ type configuration struct {
 
 func main() {
 	rawConfig := getRawConfig()
-	alias := getAlias()
+	alias := getAlias(os.Args[1:])
 	config, cluster := getConfigByAlias(alias, rawConfig)
+
+	currentKubeconfig := os.Getenv("KUBECONFIG")
+	masterKubeconfig := currentKubeconfig
+	if !isMasterConfig(currentKubeconfig) {
+		if isCurrentContext(cluster) && isLoggedIn(currentKubeconfig) {
+			logger.Printf("Already logged in to cluster %s", cluster)
+			//exit with error code so wrapper script will output this message
+			os.Exit(1)
+		} else {
+			masterKubeconfig = strings.Split(currentKubeconfig, "_")[0]
+		}
+	}
+
+	newKubeconfig := switchConfig(masterKubeconfig, cluster)
 	kubeLogin := getKubeLogin(config)
 	ctx := context.Background()
 
@@ -57,7 +72,7 @@ func main() {
 		ClientSecret: kubeLogin,
 		RedirectURL:  config.RedirectURL,
 		Endpoint:     provider.Endpoint(),                                      // Discovery returns the OAuth2 endpoints.
-		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups"}, // "openid" is a required scope for OpenID Connect flows.
+		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups", "offline_access"}, // "openid" is a required scope for OpenID Connect flows.
 	}
 
 	if err = openBrowser(oauth2Config.AuthCodeURL(state)); err != nil {
@@ -70,9 +85,41 @@ func main() {
 		logger.Fatalf("error: token is invalid: %v", err)
 	}
 
-	setCreds(rawToken)
-	switchContext(cluster)
-	notifyAndPrompt()
+	setCreds(rawToken, newKubeconfig)
+	switchContext(cluster, newKubeconfig)
+	if !isLoggedIn(newKubeconfig) {
+		logger.Fatal("error: kubectl command didn't work, even after login!")
+	}
+	//output the new kubeconfig path, used in the wrapper to set the env variable
+	logger.Printf(newKubeconfig)
+}
+
+func isMasterConfig(kubeconfigPath string) bool {
+	return len(kubeconfigPath) > 0 && !strings.Contains(kubeconfigPath, "_")
+}
+
+func switchConfig(masterConfig, cluster string) string {
+	clusterKubeconfig := masterConfig + "_" + cluster
+	copyConfig(masterConfig, clusterKubeconfig)
+	return clusterKubeconfig
+}
+
+func copyConfig(srcPath string, dstPath string) {
+	src, err := os.Open(srcPath)
+	if err != nil {
+		logger.Fatalf("error: could not open kubeconfig %s: %v", srcPath, err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(dstPath)
+	if err != nil {
+		logger.Fatalf("error: could not create kubeconfig %s: %v", dstPath, err)
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		logger.Fatalf("error: could not copy kubeconfig %s to %s: %v", srcPath, dstPath, err)
+	}
 }
 
 func openBrowser(url string) error {
@@ -115,8 +162,7 @@ func getRawConfig() map[string]*configuration {
 	return cfg
 }
 
-func getAlias() string {
-	args := os.Args[1:]
+func getAlias(args []string) string {
 	if len(args) == 0 {
 		logger.Fatalf("Alias is mandatory i.e %s. try '%s' to get this value.",
 			Bold(Cyan("kubectl-login <ALIAS>")), Bold(Cyan("cat $HOME/"+configFile)))
@@ -161,11 +207,6 @@ func containsAlias(c *configuration, s string) bool {
 	return false
 }
 
-func notifyAndPrompt() {
-	fmt.Printf("\nLogged in. Now try `%s` to get your context or '%s' to get started.\n",
-		Cyan("kubectl config get-contexts"), Cyan("kubectl get pods"))
-}
-
 func getToken() string {
 	switch runtime.GOOS {
 	case "windows":
@@ -176,8 +217,6 @@ func getToken() string {
 }
 
 func getTokenHidden() string {
-	fmt.Print(Cyan("Enter token: "))
-
 	// handle restoring terminal
 	stdinFd := int(os.Stdin.Fd())
 	state, err := terminal.GetState(stdinFd)
@@ -201,33 +240,53 @@ func getTokenHidden() string {
 }
 
 func getTokenClearText() string {
-	fmt.Print("Enter token: ")
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	return strings.TrimSpace(scanner.Text())
 }
 
-func setCreds(token string) {
+func setCreds(token, config string) {
 	tstr := fmt.Sprintf("--token=%s", token)
-	cmd := exec.Command("kubectl", "config", "set-credentials", clientID, tstr)
+	cfg := fmt.Sprintf("--kubeconfig=%s", config)
+	cmd := exec.Command("kubectl", "config", "set-credentials", clientID, tstr, cfg)
 	err := cmd.Run()
 	if err != nil {
 		logger.Fatalf("error: cannot set kubectl credentials: %v", err)
 	}
 }
 
-func switchContext(cluster string) {
+func switchContext(cluster, config string) {
 	clusterArg := fmt.Sprintf("--cluster=%s", cluster)
 	user := fmt.Sprintf("--user=%s", clientID)
-	cmd := exec.Command("kubectl", "config", "set-context", "kubectl-login-context", user, clusterArg, "--namespace=default")
+	cfg := fmt.Sprintf("--kubeconfig=%s", config)
+	cmd := exec.Command("kubectl", "config", "set-context", "kubectl-login-context", user, clusterArg, "--namespace=default", cfg)
 	err := cmd.Run()
 	if err != nil {
 		logger.Fatalf("error: cannot set kubectl login context: %v", err)
 	}
 
-	cmd = exec.Command("kubectl", "config", "use-context", "kubectl-login-context")
+	cmd = exec.Command("kubectl", "config", "use-context", "kubectl-login-context", cfg)
 	err = cmd.Run()
 	if err != nil {
 		logger.Fatalf("error: cannot switch to kubectl login context: %v", err)
 	}
+}
+
+func isCurrentContext(cluster string) bool {
+	output, err := exec.Command("kubectl", "config", "view",
+		`--output=jsonpath='{.contexts[?(@.name == "kubectl-login-context")].context.cluster}'`).CombinedOutput()
+	if err != nil {
+		fmt.Printf("error: cannot check current context: %v\n", err)
+	}
+	currentContext := strings.Trim(string(output), "'")
+	return currentContext == cluster
+}
+
+func isLoggedIn(config string) bool {
+	cfg := fmt.Sprintf("--kubeconfig=%s", config)
+	err := exec.Command("kubectl", "get", "configmap", cfg).Run()
+	if err != nil {
+		logger.Fatal(err)
+	}
+	return err == nil
 }

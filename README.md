@@ -1,5 +1,6 @@
 # kubectl-login
 
+[![Circle CI](https://circleci.com/gh/Financial-Times/kubectl-login/tree/master.png?style=shield)](https://circleci.com/gh/Financial-Times/kubectl-login/tree/master)[![Go Report Card](https://goreportcard.com/badge/github.com/Financial-Times/kubectl-login)](https://goreportcard.com/report/github.com/Financial-Times/kubectl-login) [![Coverage Status](https://coveralls.io/repos/github/Financial-Times/kubectl-login/badge.svg)](https://coveralls.io/github/Financial-Times/kubectl-login)
 
 ## Config file
 
@@ -35,7 +36,14 @@
 ## Run dep ensure
 `dep ensure`
 
-## Compile binaries
-* Cross compile binary for linux with with `GOOS=linux GOARCH=amd64 go build -o kubectl-login-linux .`
-* Cross compile binary for windows with `GOOS=windows GOARCH=amd64 go build -o kubectl-login-windows.exe .`
-* Upload the binaries to github and create a release
+## Release
+### Build binaries
+* `GOOS=linux GOARCH=amd64 go build -o kubectl-login-linux .`
+* `GOOS=darwin GOARCH=amd64 go build -o kubectl-login-darwin .`
+* `GOOS=windows GOARCH=amd64 go build -o kubectl-login-windows.exe .`
+### Create Github Release
+* Upload the binaries and the cluster-login.sh on the release
+
+## How to use locally
+* rename binary to kubectl-login and put in on your PATH
+* run `source ./cluster-login.sh  cluster-x` or `. ./cluster-login.sh  cluster-x`

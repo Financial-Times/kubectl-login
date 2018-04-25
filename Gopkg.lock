@@ -8,6 +8,12 @@
   revision = "065b426bd41667456c1a924468f507673629c46b"
 
 [[projects]]
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+  version = "v1.1.0"
+
+[[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   revision = "925541529c1fa6821df4e44ce2723319eb2be768"
@@ -19,6 +25,12 @@
   revision = "ca24023cc0175fdf372518cb1c5062cc86db2634"
 
 [[projects]]
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/pquerna/cachecontrol"
   packages = [
@@ -26,6 +38,12 @@
     "cacheobject"
   ]
   revision = "525d0eb5f91d30e3b1548de401b7ef9ea6898520"
+
+[[projects]]
+  name = "github.com/stretchr/testify"
+  packages = ["assert"]
+  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
+  version = "v1.2.1"
 
 [[projects]]
   branch = "master"
@@ -88,9 +106,15 @@
   revision = "76dd09796242edb5b897103a75df2645c028c960"
   version = "v2.1.6"
 
+[[projects]]
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2b1cded73297cea8a844eb3bfc1442cabf7e6fdf948ffdb570725a68312f961c"
+  inputs-digest = "fe52be7ee58fd0e5c1af452e5df83e080978d8b3b193d2e3311c71a28fc9d752"
   solver-name = "gps-cdcl"
   solver-version = 1
