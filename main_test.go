@@ -177,40 +177,43 @@ func TestGetAliasSuccessfully(t *testing.T) {
 }
 
 func TestExtractTokens(t *testing.T) {
+	idToken := "Hjjhhasdft.ADDGfaerrgg.asdf"
+	refreshToken := "HLKKDFfdgggAAA"
 	var testCases = []struct {
+		description          string
 		input                string
 		expectedIdToken      string
 		expectedRefreshToken string
 	}{
 		{
-			/*	idtoken + refresh token */
-			input:                "gghhhgg.fff.ssssss;hjhklkjh",
-			expectedIdToken:      "gghhhgg.fff.ssssss",
-			expectedRefreshToken: "hjhklkjh",
+			description:          "idtoken + refresh token happy case",
+			input:                idToken + ";" + refreshToken,
+			expectedIdToken:      idToken,
+			expectedRefreshToken: refreshToken,
 		},
 		{
-			/*	idtoken only	*/
-			input:                "gghhhgg.fff.ssssss",
-			expectedIdToken:      "gghhhgg.fff.ssssss",
+			description:          "idtoken only",
+			input:                idToken,
+			expectedIdToken:      idToken,
 			expectedRefreshToken: "",
 		},
 		{
-			/*	empty input*/
+			description:          "empty input",
 			input:                "",
 			expectedIdToken:      "",
 			expectedRefreshToken: "",
 		},
 		{
-			/*	more than 3 tokens included. one is unknown, but we should ignore it */
-			input:                "gghhhgg.fff.ssssss;hjhklkjh;jllllkkkkkddd",
-			expectedIdToken:      "gghhhgg.fff.ssssss",
-			expectedRefreshToken: "hjhklkjh",
+			description:          "more than 3 tokens included. one is unknown, but we should ignore it",
+			input:                idToken + ";" + refreshToken + ";" + "some other nonsense",
+			expectedIdToken:      idToken,
+			expectedRefreshToken: refreshToken,
 		},
 	}
 	for _, tc := range testCases {
 		actualIdToken, actualRefreshToken := extractTokens(tc.input)
-		assert.Equal(t, tc.expectedIdToken, actualIdToken)
-		assert.Equal(t, tc.expectedRefreshToken, actualRefreshToken)
+		assert.Equal(t, tc.expectedIdToken, actualIdToken, "Scenario: "+tc.description)
+		assert.Equal(t, tc.expectedRefreshToken, actualRefreshToken, "Scenario: "+tc.description)
 	}
 }
 
