@@ -176,6 +176,47 @@ func TestGetAliasSuccessfully(t *testing.T) {
 	}
 }
 
+func TestExtractTokens(t *testing.T) {
+	idToken := "Hjjhhasdft.ADDGfaerrgg.asdf"
+	refreshToken := "HLKKDFfdgggAAA"
+	var testCases = []struct {
+		description          string
+		input                string
+		expectedIdToken      string
+		expectedRefreshToken string
+	}{
+		{
+			description:          "idtoken + refresh token happy case",
+			input:                idToken + ";" + refreshToken,
+			expectedIdToken:      idToken,
+			expectedRefreshToken: refreshToken,
+		},
+		{
+			description:          "idtoken only",
+			input:                idToken,
+			expectedIdToken:      idToken,
+			expectedRefreshToken: "",
+		},
+		{
+			description:          "empty input",
+			input:                "",
+			expectedIdToken:      "",
+			expectedRefreshToken: "",
+		},
+		{
+			description:          "more than 3 tokens included. one is unknown, but we should ignore it",
+			input:                idToken + ";" + refreshToken + ";" + "some other nonsense",
+			expectedIdToken:      idToken,
+			expectedRefreshToken: refreshToken,
+		},
+	}
+	for _, tc := range testCases {
+		actualIdToken, actualRefreshToken := extractTokens(tc.input)
+		assert.Equal(t, tc.expectedIdToken, actualIdToken, "Scenario: "+tc.description)
+		assert.Equal(t, tc.expectedRefreshToken, actualRefreshToken, "Scenario: "+tc.description)
+	}
+}
+
 func TestGetAliasFailure(t *testing.T) {
 	if os.Getenv("CRASH") == "true" {
 		getAlias([]string{})
@@ -335,7 +376,7 @@ func TestContainsAlias(t *testing.T) {
 	}
 }
 
-func TestSetCreds(t *testing.T) {
+func TestSetIdTokenCreds(t *testing.T) {
 	if os.Getenv("KUBECTL_AVAILABLE") == "FALSE" {
 		t.Skip("skipping test: kubectl is not available")
 	}
@@ -346,12 +387,41 @@ func TestSetCreds(t *testing.T) {
 	kubeConfig.Sync()
 
 	expectedToken := "WQ1NDZiOGZkMTA4NWFkMzExZ"
-	setCreds(expectedToken, kubeConfig.Name())
+	setIdTokenCreds(expectedToken, kubeConfig.Name())
 
 	newKubeconfigRaw, _ := ioutil.ReadFile(kubeConfig.Name())
-	newKubeconfig := parse(newKubeconfigRaw, t)
+	newKubeconfig := parseIdTokenConfig(newKubeconfigRaw, t)
 	assert.True(t, len(newKubeconfig.Users) > 0)
 	assert.Equal(t, expectedToken, newKubeconfig.Users[0].UserData.Token)
+}
+
+func TestSetOIDCCreds(t *testing.T) {
+	if os.Getenv("KUBECTL_AVAILABLE") == "FALSE" {
+		t.Skip("skipping test: kubectl is not available")
+	}
+
+	kubeConfig, _ := ioutil.TempFile(os.TempDir(), "test")
+	defer os.Remove(kubeConfig.Name())
+	kubeConfig.Write([]byte(testKubeconfig))
+	kubeConfig.Sync()
+
+	expToken := "WQ1NDZiOGZkMTA4NWFkMzExZ"
+	expClientSecret := "llldGgadfgkKjadfllj"
+	expRefreshToken := "GHHHDLKJLKJDOIIKL"
+	expIdpIssuerUrl := "https://upp-k8s-dev-delivery-eu-dex.ft.com"
+	setOIDCAuth(expClientSecret, expToken, expRefreshToken, expIdpIssuerUrl, kubeConfig.Name())
+
+	newKubeconfigRaw, _ := ioutil.ReadFile(kubeConfig.Name())
+	newKubeconfig := parseOIDCAuthConfig(newKubeconfigRaw, t)
+	assert.True(t, len(newKubeconfig.Users) > 0)
+	assert.Equal(t, clientID, newKubeconfig.Users[0].Name)
+
+	oauthConfig := newKubeconfig.Users[0].OIDCUserData.OIDCAuthProvider.OIDCAuthProviderConfig
+	assert.Equal(t, expToken, oauthConfig.IDToken)
+	assert.Equal(t, expClientSecret, oauthConfig.ClientSecret)
+	assert.Equal(t, clientID, oauthConfig.ClientID)
+	assert.Equal(t, expRefreshToken, oauthConfig.RefreshToken)
+	assert.Equal(t, expIdpIssuerUrl, oauthConfig.IDPIssuerURL)
 }
 
 func TestSetSwitchContext(t *testing.T) {
@@ -368,7 +438,7 @@ func TestSetSwitchContext(t *testing.T) {
 	switchContext(expectedCluster, kubeConfig.Name())
 
 	newKubeconfigRaw, _ := ioutil.ReadFile(kubeConfig.Name())
-	newKubeconfig := parse(newKubeconfigRaw, t)
+	newKubeconfig := parseIdTokenConfig(newKubeconfigRaw, t)
 	assert.True(t, len(newKubeconfig.Contexts) > 0)
 	contextFound := false
 	for _, c := range newKubeconfig.Contexts {
@@ -391,7 +461,7 @@ func TestIsCurrentContext(t *testing.T) {
 	}
 
 	kubeconfigRaw, _ := ioutil.ReadFile(kubeconfigPath)
-	kubeconfig := parse(kubeconfigRaw, t)
+	kubeconfig := parseIdTokenConfig(kubeconfigRaw, t)
 	expectedCurrentCluster := ""
 	for _, c := range kubeconfig.Contexts {
 		if c.Name == "kubectl-login-context" {
@@ -452,16 +522,47 @@ users:
     token: foobar
 `
 
-type KubeConfig struct {
-	ApiVersion     string    `yaml:"apiVersion"`
-	Clusters       []Cluster `yaml:"clusters"`
-	Contexts       []Context `yaml:"contexts"`
-	CurrentContext string    `yaml:"current-context"`
-	Kind           string    `yaml:"kind"`
-	Users          []User    `yaml:"users"`
+type OIDCKubeConfig struct {
+	ApiVersion     string     `yaml:"apiVersion"`
+	Clusters       []Cluster  `yaml:"clusters"`
+	Contexts       []Context  `yaml:"contexts"`
+	CurrentContext string     `yaml:"current-context"`
+	Kind           string     `yaml:"kind"`
+	Users          []OIDCUser `yaml:"users"`
 }
 
-type User struct {
+type OIDCUser struct {
+	Name         string       `yaml:"name"`
+	OIDCUserData OIDCUserData `yaml:"user"`
+}
+
+type OIDCUserData struct {
+	OIDCAuthProvider OIDCAuthProvider `yaml:"auth-provider"`
+}
+
+type OIDCAuthProvider struct {
+	Name                   string                 `yaml:"name"`
+	OIDCAuthProviderConfig OIDCAuthProviderConfig `yaml:"config"`
+}
+
+type OIDCAuthProviderConfig struct {
+	ClientID     string `yaml:"client-id"`
+	ClientSecret string `yaml:"client-secret"`
+	IDToken      string `yaml:"id-token"`
+	IDPIssuerURL string `yaml:"idp-issuer-url"`
+	RefreshToken string `yaml:"refresh-token"`
+}
+
+type IdTokenKubeConfig struct {
+	ApiVersion     string        `yaml:"apiVersion"`
+	Clusters       []Cluster     `yaml:"clusters"`
+	Contexts       []Context     `yaml:"contexts"`
+	CurrentContext string        `yaml:"current-context"`
+	Kind           string        `yaml:"kind"`
+	Users          []IdTokenUser `yaml:"users"`
+}
+
+type IdTokenUser struct {
 	Name     string   `yaml:"name"`
 	UserData UserData `yaml:"user"`
 }
@@ -490,8 +591,16 @@ type ContextData struct {
 	User        string `yaml:"user"`
 }
 
-func parse(rawConfig []byte, t *testing.T) KubeConfig {
-	var config KubeConfig
+func parseIdTokenConfig(rawConfig []byte, t *testing.T) IdTokenKubeConfig {
+	var config IdTokenKubeConfig
+	if err := yaml.Unmarshal(rawConfig, &config); err != nil {
+		t.Fatal(err)
+	}
+	return config
+}
+
+func parseOIDCAuthConfig(rawConfig []byte, t *testing.T) OIDCKubeConfig {
+	var config OIDCKubeConfig
 	if err := yaml.Unmarshal(rawConfig, &config); err != nil {
 		t.Fatal(err)
 	}
