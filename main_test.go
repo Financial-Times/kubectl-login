@@ -451,27 +451,6 @@ func TestSetSwitchContext(t *testing.T) {
 	assert.True(t, contextFound)
 }
 
-func TestIsCurrentContext(t *testing.T) {
-	if os.Getenv("KUBECTL_AVAILABLE") == "FALSE" {
-		t.Skip("skipping test: kubectl is not available")
-	}
-	kubeconfigPath := os.Getenv("KUBECONFIG")
-	if kubeconfigPath == "" {
-		t.Skip("skipping test: KUBECONFIG environment variable is empty")
-	}
-
-	kubeconfigRaw, _ := ioutil.ReadFile(kubeconfigPath)
-	kubeconfig := parseIdTokenConfig(kubeconfigRaw, t)
-	expectedCurrentCluster := ""
-	for _, c := range kubeconfig.Contexts {
-		if c.Name == "kubectl-login-context" {
-			expectedCurrentCluster = c.ContextData.ClusterName
-		}
-	}
-	isCurrentContext := isCurrentContext(expectedCurrentCluster)
-	assert.True(t, isCurrentContext)
-}
-
 var validConfig = map[string]*configuration{
 	"config1": {
 		Issuer:      "https://upp-k8s-cluster.ft.com",
