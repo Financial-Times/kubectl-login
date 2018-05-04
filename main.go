@@ -49,16 +49,16 @@ func main() {
 	currentKubeconfig := os.Getenv("KUBECONFIG")
 	masterKubeconfig := currentKubeconfig
 	if !isMasterConfig(currentKubeconfig) {
-		if isCurrentContext(cluster) && isLoggedIn(currentKubeconfig) {
-			logger.Printf("Already logged in to cluster %s", cluster)
-			//exit with error code so wrapper script will output this message
-			os.Exit(1)
-		} else {
-			masterKubeconfig = strings.Split(currentKubeconfig, "_")[0]
-		}
+		masterKubeconfig = strings.Split(currentKubeconfig, "_")[0]
 	}
 
-	newKubeconfig := switchConfig(masterKubeconfig, cluster)
+	newKubeconfig := getClusterConfig(masterKubeconfig, cluster)
+	if isLoggedIn(newKubeconfig) {
+		logger.Printf(newKubeconfig)
+		os.Exit(0)
+	}
+
+	switchConfig(masterKubeconfig, cluster)
 	kubeLogin := getKubeLogin(config)
 	ctx := context.Background()
 
@@ -107,9 +107,13 @@ func isMasterConfig(kubeconfigPath string) bool {
 }
 
 func switchConfig(masterConfig, cluster string) string {
-	clusterKubeconfig := masterConfig + "_" + cluster
+	clusterKubeconfig := getClusterConfig(masterConfig, cluster)
 	copyConfig(masterConfig, clusterKubeconfig)
 	return clusterKubeconfig
+}
+
+func getClusterConfig(masterConfig string, cluster string) string {
+	return masterConfig + "_" + cluster
 }
 
 func copyConfig(srcPath string, dstPath string) {
@@ -311,16 +315,6 @@ func switchContext(cluster, config string) {
 	if err != nil {
 		logger.Fatalf("error: cannot switch to kubectl login context: %v", err)
 	}
-}
-
-func isCurrentContext(cluster string) bool {
-	output, err := exec.Command("kubectl", "config", "view",
-		`--output=jsonpath='{.contexts[?(@.name == "kubectl-login-context")].context.cluster}'`).CombinedOutput()
-	if err != nil {
-		fmt.Printf("error: cannot check current context: %v\n", err)
-	}
-	currentContext := strings.Trim(string(output), "'")
-	return currentContext == cluster
 }
 
 func isLoggedIn(config string) bool {
