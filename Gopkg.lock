@@ -50,8 +50,7 @@
   name = "golang.org/x/crypto"
   packages = [
     "ed25519",
-    "ed25519/internal/edwards25519",
-    "ssh/terminal"
+    "ed25519/internal/edwards25519"
   ]
   revision = "f70185d77e8278766928032ee1355e3da47e7181"
 
@@ -72,15 +71,6 @@
     "internal"
   ]
   revision = "921ae394b9430ed4fb549668d7b087601bd60a81"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/sys"
-  packages = [
-    "unix",
-    "windows"
-  ]
-  revision = "3b87a42e500a6dc65dae1a55d0b641295971163e"
 
 [[projects]]
   name = "google.golang.org/appengine"
@@ -115,6 +105,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fe52be7ee58fd0e5c1af452e5df83e080978d8b3b193d2e3311c71a28fc9d752"
+  inputs-digest = "9b6baf3a2caebf942aa771e1bc76f436aafd378c5802ce24c8d257ac7231c527"
   solver-name = "gps-cdcl"
   solver-version = 1
