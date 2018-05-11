@@ -1,21 +1,21 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
+	"runtime"
 	"strings"
 
 	"github.com/coreos/go-oidc"
+	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/oauth2"
-
-	"encoding/json"
-	"io/ioutil"
-
-	"runtime"
 
 	. "github.com/logrusorgru/aurora"
 )
@@ -76,11 +76,11 @@ func main() {
 	redirectUrl := oauth2Config.AuthCodeURL(state)
 	logger.Println(redirectUrl)
 	browserErr := openBrowser(redirectUrl)
-	
+
 	if browserErr != nil {
-    	if !strings.Contains(browserErr.Error(), "executable file not found in $PATH") {
-        	logger.Fatalf("error: cannot open browser: %v", browserErr)
-        }
+		if !strings.Contains(browserErr.Error(), "executable file not found in $PATH") {
+			logger.Fatalf("error: cannot open browser: %v", browserErr)
+		}
 	}
 
 	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientID})
@@ -159,7 +159,7 @@ func getRawConfig() map[string]*configuration {
 		logger.Fatalf("error: cannot open config file at %s: %v", configPath, err)
 	}
 
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		closeFile(file)
 		logger.Fatalf("error: cannot read config file at %s: %v", configPath, err)
@@ -229,6 +229,43 @@ func extractTokens(combTkns string) (string, string) {
 	} else {
 		return tkns[0], tkns[1]
 	}
+}
+
+func readTokensHidden() string {
+	// handle restoring terminal
+	stdinFd := int(os.Stdin.Fd())
+	state, err := terminal.MakeRaw(0)
+
+	defer terminal.Restore(stdinFd, state)
+
+	sigch := make(chan os.Signal, 1)
+	signal.Notify(sigch, os.Interrupt)
+	go func() {
+		for range sigch {
+			terminal.Restore(stdinFd, state)
+			os.Exit(1)
+		}
+	}()
+
+	screen := struct {
+		io.Reader
+		io.Writer
+	}{os.Stdin, os.Stdout}
+	term := terminal.NewTerminal(screen, "")
+
+	byteToken, err := term.ReadPassword("")
+	if err != nil {
+		logger.Fatalf("error: cannot read token from terminal: %v", err)
+	}
+	token := string(byteToken)
+
+	return strings.TrimSpace(token)
+}
+
+func readTokensClearText() string {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	return strings.TrimSpace(scanner.Text())
 }
 
 func setIdTokenCreds(token, config string) {
