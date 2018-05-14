@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -224,12 +223,6 @@ func extractTokens(combTkns string) (string, string) {
 	} else {
 		return tkns[0], tkns[1]
 	}
-}
-
-func readTokens() string {
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	return strings.TrimSpace(scanner.Text())
 }
 
 func setIdTokenCreds(token, config string) {
