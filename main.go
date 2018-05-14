@@ -239,6 +239,11 @@ func extractTokens(combTkns string) (string, string) {
 func readTokensHidden() string {
 	// handle restoring terminal
 	stdinFd := int(os.Stdin.Fd())
+	// using a new raw terminal that is put in noncanonical mode, as on macos, in canonical mode, the max length of
+	// a line is 1024 characters, which has the effect that only tokens less than 1023 characters can be read in canonical mode.
+	// Here are some useful links:
+	// https://unix.stackexchange.com/questions/204815/terminal-does-not-accept-pasted-or-typed-lines-of-more-than-1024-characters
+	// https://linux.die.net/man/1/stty
 	state, err := terminal.MakeRaw(0)
 
 	defer terminal.Restore(stdinFd, state)
