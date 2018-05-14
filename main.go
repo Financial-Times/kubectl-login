@@ -4,17 +4,15 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/coreos/go-oidc"
+	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/oauth2"
 	"io"
 	"log"
 	"os"
 	"os/exec"
 	"os/signal"
 	"strings"
-	"syscall"
-
-	"github.com/coreos/go-oidc"
-	"golang.org/x/crypto/ssh/terminal"
-	"golang.org/x/oauth2"
 
 	"encoding/json"
 	"io/ioutil"
@@ -241,7 +239,13 @@ func extractTokens(combTkns string) (string, string) {
 func readTokensHidden() string {
 	// handle restoring terminal
 	stdinFd := int(os.Stdin.Fd())
-	state, err := terminal.GetState(stdinFd)
+	// using a new raw terminal that is put in noncanonical mode, as on macos, in canonical mode, the max length of
+	// a line is 1024 characters, which has the effect that only tokens less than 1023 characters can be read in canonical mode.
+	// Here are some useful links:
+	// https://unix.stackexchange.com/questions/204815/terminal-does-not-accept-pasted-or-typed-lines-of-more-than-1024-characters
+	// https://linux.die.net/man/1/stty
+	state, err := terminal.MakeRaw(0)
+
 	defer terminal.Restore(stdinFd, state)
 
 	sigch := make(chan os.Signal, 1)
@@ -252,7 +256,14 @@ func readTokensHidden() string {
 			os.Exit(1)
 		}
 	}()
-	byteToken, err := terminal.ReadPassword(int(syscall.Stdin))
+
+	screen := struct {
+		io.Reader
+		io.Writer
+	}{os.Stdin, os.Stdout}
+	term := terminal.NewTerminal(screen, "")
+
+	byteToken, err := term.ReadPassword("")
 	if err != nil {
 		logger.Fatalf("error: cannot read token from terminal: %v", err)
 	}
