@@ -1,19 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/exec"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	"github.com/coreos/go-oidc"
-	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/oauth2"
 
 	"encoding/json"
@@ -82,7 +78,7 @@ func main() {
 	}
 
 	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientID})
-	tokensInput := readTokensInput()
+	tokensInput := readTokens()
 	rawIdToken, refreshToken := extractTokens(tokensInput)
 	if _, err = idTokenVerifier.Verify(ctx, rawIdToken); err != nil {
 		logger.Fatalf("error: token is invalid: %v", err)
@@ -219,15 +215,6 @@ func containsAlias(c *configuration, s string) bool {
 	return false
 }
 
-func readTokensInput() string {
-	switch runtime.GOOS {
-	case "windows":
-		return readTokensClearText()
-	default:
-		return readTokensHidden()
-	}
-}
-
 func extractTokens(combTkns string) (string, string) {
 	/*	dex-redirect will combine the id token with the refresh token into a single string separated by ";" */
 	tkns := strings.Split(combTkns, tokensSeparator)
@@ -236,35 +223,6 @@ func extractTokens(combTkns string) (string, string) {
 	} else {
 		return tkns[0], tkns[1]
 	}
-}
-
-func readTokensHidden() string {
-	// handle restoring terminal
-	stdinFd := int(os.Stdin.Fd())
-	state, err := terminal.GetState(stdinFd)
-	defer terminal.Restore(stdinFd, state)
-
-	sigch := make(chan os.Signal, 1)
-	signal.Notify(sigch, os.Interrupt)
-	go func() {
-		for range sigch {
-			terminal.Restore(stdinFd, state)
-			os.Exit(1)
-		}
-	}()
-	byteToken, err := terminal.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		logger.Fatalf("error: cannot read token from terminal: %v", err)
-	}
-	token := string(byteToken)
-
-	return strings.TrimSpace(token)
-}
-
-func readTokensClearText() string {
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	return strings.TrimSpace(scanner.Text())
 }
 
 func setIdTokenCreds(token, config string) {
