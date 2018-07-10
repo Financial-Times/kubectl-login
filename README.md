@@ -47,3 +47,9 @@
 ## How to use locally
 * rename binary to kubectl-login and put in on your PATH
 * run `source ./cluster-login.sh  cluster-x` or `. ./cluster-login.sh  cluster-x`
+
+### How to [Fish](https://fishshell.com/) locally
+* put the following lines in `~/.config/fish/config.fish`:
+    * `set -x KUBECONFIG <PATH_TO membership-developer-setup>/kubeconfig`
+    * `alias k8s-login="source <PATH_TO kubectl-login>/cluster-login.fish $argv"`
+* Use with `k8s-login` (or whatever name you alias for the command)
