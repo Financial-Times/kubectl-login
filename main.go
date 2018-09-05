@@ -75,12 +75,13 @@ func main() {
 
 	redirectUrl := oauth2Config.AuthCodeURL(state)
 	logger.Println(redirectUrl)
-	err = openBrowser(redirectUrl)
- 	if err != nil {
-		if err != exec.ErrNotFound {
-			logger.Fatalf("error: cannot open browser: %v", err)
-		}
-	}
+	browserErr := openBrowser(redirectUrl)
+
+    if browserErr != nil {
+            if !strings.Contains(browserErr.Error(), "executable file not found in $PATH") {
+                    logger.Fatalf("error: cannot open browser: %v", browserErr)
+            }
+    }
 
 	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientID})
 	tokensInput := readTokens()
