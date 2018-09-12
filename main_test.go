@@ -434,21 +434,22 @@ func TestSetSwitchContext(t *testing.T) {
 	kubeConfig.Write([]byte(testKubeconfig))
 	kubeConfig.Sync()
 
-	expectedCluster := "k8s-test-publishing-cluster"
-	switchContext(expectedCluster, kubeConfig.Name())
+	expectedCluster := Context{
+		Name: "k8s-test-publishing-cluster",
+		ContextData: ContextData{
+			ClusterName: "k8s-test-publishing-cluster",
+			Namespace: "default",
+			User: "kubectl-login",
+		},
+	}
+	switchContext(expectedCluster.Name, kubeConfig.Name())
 
 	newKubeconfigRaw, _ := ioutil.ReadFile(kubeConfig.Name())
 	newKubeconfig := parseIdTokenConfig(newKubeconfigRaw, t)
-	assert.True(t, len(newKubeconfig.Contexts) > 0)
-	contextFound := false
-	for _, c := range newKubeconfig.Contexts {
-		if c.Name == "kubectl-login-context" {
-			assert.Equal(t, expectedCluster, c.ContextData.ClusterName)
-			contextFound = true
-			break
-		}
-	}
-	assert.True(t, contextFound)
+
+	assert.NotEmpty(t, newKubeconfig.Contexts)
+	assert.Equal(t, expectedCluster.Name, newKubeconfig.CurrentContext)
+	assert.Contains(t, newKubeconfig.Contexts, expectedCluster )
 }
 
 var validConfig = map[string]*configuration{
