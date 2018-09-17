@@ -268,13 +268,13 @@ func switchContext(cluster, config string) {
 	clusterArg := fmt.Sprintf("--cluster=%s", cluster)
 	user := fmt.Sprintf("--user=%s", clientID)
 	cfg := fmt.Sprintf("--kubeconfig=%s", config)
-	cmd := exec.Command("kubectl", "config", "set-context", "kubectl-login-context", user, clusterArg, "--namespace=default", cfg)
+	cmd := exec.Command("kubectl", "config", "set-context", cluster, user, clusterArg, "--namespace=default", cfg)
 	err := cmd.Run()
 	if err != nil {
 		logger.Fatalf("error: cannot set kubectl login context: %v", err)
 	}
 
-	cmd = exec.Command("kubectl", "config", "use-context", "kubectl-login-context", cfg)
+	cmd = exec.Command("kubectl", "config", "use-context", cluster, cfg)
 	err = cmd.Run()
 	if err != nil {
 		logger.Fatalf("error: cannot switch to kubectl login context: %v", err)
@@ -283,6 +283,6 @@ func switchContext(cluster, config string) {
 
 func isLoggedIn(config string) bool {
 	cfg := fmt.Sprintf("--kubeconfig=%s", config)
-	err := exec.Command("kubectl", "get", "configmap", cfg).Run()
+	err := exec.Command("kubectl", "get", "namespace", cfg).Run()
 	return err == nil
 }
