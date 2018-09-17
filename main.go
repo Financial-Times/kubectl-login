@@ -73,8 +73,14 @@ func main() {
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups", "offline_access"}, // "openid" is a required scope for OpenID Connect flows.
 	}
 
-	if err = openBrowser(oauth2Config.AuthCodeURL(state)); err != nil {
-		logger.Fatalf("error: cannot open browser: %v", err)
+	redirectUrl := oauth2Config.AuthCodeURL(state)
+	logger.Println(redirectUrl)
+	browserErr := openBrowser(redirectUrl)
+	
+	if browserErr != nil {
+    	if !strings.Contains(browserErr.Error(), "executable file not found in $PATH") {
+        	logger.Fatalf("error: cannot open browser: %v", browserErr)
+        }
 	}
 
 	idTokenVerifier := provider.Verifier(&oidc.Config{ClientID: clientID})
