@@ -53,3 +53,7 @@
     * `set -x KUBECONFIG <PATH_TO membership-developer-setup>/kubeconfig`
     * `alias k8s-login="source <PATH_TO kubectl-login>/cluster-login.fish $argv"`
 * Use with `k8s-login` (or whatever name you alias for the command)
+
+### How to use with ZSH
+* put `export KUBECONFIG=[path-to-repo]/content-k8s-auth-setup/kubeconfig`  in `~/.zshrc`
+* execute `source cluster-login.zsh udde`
