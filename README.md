@@ -57,3 +57,12 @@
 ### How to use with ZSH
 * put `export KUBECONFIG=[path-to-repo]/content-k8s-auth-setup/kubeconfig`  in `~/.zshrc`
 * execute `source cluster-login.zsh udde`
+
+
+### Only if you are connecting to EKS
+ Inside `update-eks-kubeconfig` directory there is a script named `update-eks-kubeconfig.sh`. The script will merge existing EKS kubeconfig files for you and will store the merged kubecofig in /tmp directory of your local computer:
+
+```
+cd update-eks-kubeconfig/
+bash update-eks-kubeconfig.sh
+```
