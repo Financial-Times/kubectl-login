@@ -3,37 +3,36 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+CLUSTERS=(
+  pac-staging-eks-eu
+)
+
+SCRIPT_NAME=$0
+
 #URL to download the kubeconfigs
 BUCKET_URL=https://upp-kubeconfig.s3-eu-west-1.amazonaws.com
 
-# Check if the bucket is reachable
-status=$(curl -s --head -w %{http_code} $BUCKET_URL/index -o /dev/null)
+# Check if the bucket is reachable and get kubeconfigs
+status=$(curl -s --head -w %{http_code} $BUCKET_URL/${CLUSTERS[0]} -o /dev/null)
 if [ $status -ne "200" ] 
 then
-  echo "S3 bucket not reachable. Check your connection"
+  echo "S3 bucket not reachable! Check your connection!"
   exit 1
+else
+TMP_EXEC_DIR="$(mktemp -d /tmp/"${SCRIPT_NAME}".XXXXXXXXXX)" || exit 1
+
+for cluster in "${CLUSTERS[@]}"; do
+curl -s $BUCKET_URL/$cluster > $TMP_EXEC_DIR/$cluster
+done
 fi
 
-# Get kubeconfigs
-curl -s $BUCKET_URL/index > /tmp/index
-for config in $(cat /tmp/index); do
-curl -s $BUCKET_URL/$config > /tmp/$config
-done
-
 #Merge kubeconfigs
-myarray=()
-for i in $(cat /tmp/index); do
-l=/tmp/$i
-myarray+=($l)
-done
-KUBECONFIG=$(echo "${myarray[@]}" | sed 's/ /:/g') kubectl config view --merge=true --flatten=true > /tmp/kubeconfig
-
-
+cd $TMP_EXEC_DIR/
+KUBECONFIG=$(echo "${CLUSTERS[@]}" | sed 's/ /:/g') kubectl config view --merge=true --flatten=true > eks-kubeconfig
+mv eks-kubeconfig $HOME/.kube/eks-kubeconfig
 
 #Cleanup
-for config in $(cat /tmp/index); do
-rm -f /tmp/$config
-done
-rm -f /tmp/index
+cd - 1>/dev/null
+rm -rf $TMP_EXEC_DIR/
 
-echo "New merged kubeconfig generated in /tmp/kubeconfig"
+echo "New merged kubeconfig generated in $HOME/.kube/eks-kubeconfig"
