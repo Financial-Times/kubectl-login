@@ -57,3 +57,24 @@
 ### How to use with ZSH
 * put `export KUBECONFIG=[path-to-repo]/content-k8s-auth-setup/kubeconfig`  in `~/.zshrc`
 * execute `source cluster-login.zsh udde`
+
+
+### Only if you are connecting to EKS
+When provisioning a new EKS cluster the provisioning script will upload the corresponding kubeconfig
+to S3 bucket named "upp-kubeconfig". In order to use it you need to get this kubeconifg and merge it
+with the kubeconfig files of the rest of EKS clusters. This way you will have a single united
+kubeconfig for all the EKS clusters. Inside `update-eks-kubeconfig` directory there is a script
+named `update-eks-kubeconfig.sh`. The script will do this merge for you and will store the merged
+eks-kubecofig under $HOME/.kube
+Connect to the Restricted VPN and execute:
+
+```
+cd update-eks-kubeconfig/
+bash update-eks-kubeconfig.sh
+```
+
+If you want create an alias to easily change the KUBECONFIG:
+```
+alias export-eks-kubeconfig="export KUBECONFIG=/$HOME/.kube/eks-kubeconfig"
+```
+
