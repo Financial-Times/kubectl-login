@@ -4,7 +4,9 @@ set -euo pipefail
 IFS=$'\n\t'
 
 CLUSTERS=(
-  pac-staging-eks-eu
+  pac-test-eks-eu
+  pac-test-eks-us
+
 )
 
 SCRIPT_NAME=$0
@@ -13,7 +15,7 @@ SCRIPT_NAME=$0
 BUCKET_URL=https://upp-kubeconfig.s3-eu-west-1.amazonaws.com
 
 # Check if the bucket is reachable and get kubeconfigs
-status=$(curl -s --head -w %{http_code} $BUCKET_URL/${CLUSTERS[0]} -o /dev/null)
+status=$(curl -s --head -w %{http_code} $BUCKET_URL/check -o /dev/null)
 if [ $status -ne "200" ] 
 then
   echo "S3 bucket not reachable! Check your connection!"
@@ -36,3 +38,5 @@ cd - 1>/dev/null
 rm -rf $TMP_EXEC_DIR/
 
 echo "New merged kubeconfig generated in $HOME/.kube/eks-kubeconfig"
+
+
