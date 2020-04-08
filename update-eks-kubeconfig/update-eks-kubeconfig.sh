@@ -4,8 +4,8 @@ set -euo pipefail
 IFS=$'\n\t'
 
 CLUSTERS=(
-  pac-test-eks-eu
-  pac-test-eks-us
+  eks-pac-test-eu
+  eks-pac-test-us
 
 )
 
