@@ -3,12 +3,12 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-CLUSTERS_PROD=(
+PROD_ACCOUNT_CLUSTERS=(
   eks-pac-test-eu
   eks-pac-test-us
 
 )
-CLUSTERS_DEV=(
+TEST_ACCOUNT_CLUSTERS=(
   eks-publish-test-eu
 )
 
@@ -34,11 +34,11 @@ then
 else
 TMP_EXEC_DIR="$(mktemp -d /tmp/"${SCRIPT_NAME}".XXXXXXXXXX)" || exit 1
 
-for cluster in "${CLUSTERS_PROD[@]}"; do
+for cluster in "${PROD_ACCOUNT_CLUSTERS[@]}"; do
 curl -s "${BUCKET_PROD_URL}"/$cluster > $TMP_EXEC_DIR/$cluster
 done
 
-for cluster in "${CLUSTERS_DEV[@]}"; do
+for cluster in "${TEST_ACCOUNT_CLUSTERS[@]}"; do
 curl -s "${BUCKET_DEV_URL}"/$cluster > $TMP_EXEC_DIR/$cluster
 done
 fi
@@ -48,7 +48,7 @@ rm -f "${HOME}"/.kube/eks-kubeconfig
 
 #Merge kubeconfigs
 cd "${TMP_EXEC_DIR}"/
-KUBECONFIG=$(echo "${CLUSTERS_PROD[@]}" "${CLUSTERS_DEV[@]}" | sed 's/ /:/g') kubectl config view --merge=true --flatten=true > eks-kubeconfig
+KUBECONFIG=$(echo "${PROD_ACCOUNT_CLUSTERS[@]}" "${TEST_ACCOUNT_CLUSTERS[@]}" | sed 's/ /:/g') kubectl config view --merge=true --flatten=true > eks-kubeconfig
 mv eks-kubeconfig "${HOME}"/.kube/eks-kubeconfig
 
 #Cleanup
