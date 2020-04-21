@@ -23,7 +23,7 @@ BUCKET_DEV_URL=https://upp-kubeconfig-070529446553.s3-eu-west-1.amazonaws.com
 STATUS_PROD=$(curl -s --head -w %{http_code} "${BUCKET_PROD_URL}"/check -o /dev/null)
 STATUS_DEV=$(curl -s --head -w %{http_code} "${BUCKET_DEV_URL}"/check -o /dev/null)
 
-if [ "{$STATUS_PROD}" -ne "200" ] 
+if [ "${STATUS_PROD}" -ne "200" ] 
 then
   echo "S3 bucket in PROD account not reachable! Check your connection!"
   exit 1
