@@ -58,23 +58,28 @@
 * put `export KUBECONFIG=[path-to-repo]/content-k8s-auth-setup/kubeconfig`  in `~/.zshrc`
 * execute `source cluster-login.zsh udde`
 
-
 ### Only if you are connecting to EKS
+
 When provisioning a new EKS cluster the provisioning script will upload the corresponding kubeconfig
-to S3 bucket named "upp-kubeconfig". In order to use it you need to get this kubeconifg and merge it
+to S3 bucket named "upp-kubeconfig-ACCOUNT-NUMBER". In order to use it you need to get this kubeconifg and merge it
 with the kubeconfig files of the rest of EKS clusters. This way you will have a single united
 kubeconfig for all the EKS clusters. Inside `update-eks-kubeconfig` directory there is a script
 named `update-eks-kubeconfig.sh`. The script will do this merge for you and will store the merged
 eks-kubecofig under $HOME/.kube
 Connect to the Restricted VPN and execute:
 
-```
+```shell
 cd update-eks-kubeconfig/
 bash update-eks-kubeconfig.sh
 ```
 
 If you want create an alias to easily change the KUBECONFIG:
-```
+
+```shell
 alias export-eks-kubeconfig="export KUBECONFIG=/$HOME/.kube/eks-kubeconfig"
 ```
 
+The script `ops-eks-kubeconfig.sh` inside `update-eks-kubeconfig` directory is intended to be used
+from OPS on the jumpbox (Upp Jumpbox p). The script sits in `/usr/local/bin` and is invoked by
+`/etc/skel/.bashrc` everytime a user is connected. The purpose of the script is similar - it will download and
+merge the kubeconfigs for OPS and will get `kubectx` tool on the jumpbox.
