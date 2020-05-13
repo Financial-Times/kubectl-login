@@ -10,6 +10,7 @@ PROD_ACCOUNT_CLUSTERS=(
 )
 TEST_ACCOUNT_CLUSTERS=(
   eks-publish-test-eu
+  eks-delivery-test-eu
 )
 
 
