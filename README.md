@@ -83,3 +83,56 @@ The script `ops-eks-kubeconfig.sh` inside `update-eks-kubeconfig` directory is i
 from OPS on the jumpbox (Upp Jumpbox p). The script sits in `/usr/local/bin` and is invoked by
 `/etc/skel/.bashrc` everytime a user is connected. The purpose of the script is similar - it will download and
 merge the kubeconfigs for OPS and will get `kubectx` tool on the jumpbox.
+
+#### Step-by-Step guide how to connect to EKS clusters
+
+1. Connect to Restricted VPN
+2. Checkout the kubectl-login repo
+```shell
+git clone git@github.com:Financial-Times/kubectl-login.git
+```
+3. Get in `update-eks-kubeconfig/` folder
+```shell
+cd update-eks-kubeconfig/
+```
+4. Edit `update-eks-kubeconfig.sh` script and fill in the EKS cluster names in PROD and TEST accounts
+```shell
+PROD_ACCOUNT_CLUSTERS=(
+  eks-pac-staging-eu
+  eks-pac-staging-us
+
+)
+TEST_ACCOUNT_CLUSTERS=(
+  eks-publish-staging-eu
+  eks-delivery-staging-eu
+)
+```
+5. Execute `update-eks-kubeconfig.sh`
+```shell
+bash update-eks-kubeconfig.sh
+```
+Restricted VPN is now no longer needed.
+
+6. Export KUBECONFIG
+```shell
+export KUBECONFIG=$HOME/.kube/eks-kubeconfig
+```
+7. Install [kubectx](https://github.com/ahmetb/kubectx)
+```shell
+brew install kubectx
+```
+8. Run kubectx
+```shell
+laptop$ kubectx
+eks-delivery-test-eu
+eks-pac-test-eu
+laptop$
+```
+9. Connect to EKS cluster
+```shell
+laptop$ kubectx eks-delivery-test-eu
+```
+10. Profit
+```shell
+kubectl get pods
+```
