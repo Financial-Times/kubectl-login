@@ -55,6 +55,7 @@
 * Use with `k8s-login` (or whatever name you alias for the command)
 
 ### How to use with ZSH
+
 * put `export KUBECONFIG=[path-to-repo]/content-k8s-auth-setup/kubeconfig`  in `~/.zshrc`
 * execute `source cluster-login.zsh udde`
 
@@ -87,15 +88,20 @@ merge the kubeconfigs for OPS and will get `kubectx` tool on the jumpbox.
 #### Step-by-Step guide how to connect to EKS clusters
 
 1. Connect to Restricted VPN
-2. Checkout the kubectl-login repo
+1. Checkout the kubectl-login repo
+
 ```shell
 git clone git@github.com:Financial-Times/kubectl-login.git
 ```
-3. Get in `update-eks-kubeconfig/` folder
+
+1. Get in `update-eks-kubeconfig/` folder
+
 ```shell
 cd update-eks-kubeconfig/
 ```
-4. Edit `update-eks-kubeconfig.sh` script and fill in the EKS cluster names in PROD and TEST accounts
+
+1. Edit `update-eks-kubeconfig.sh` script and fill in the EKS cluster names in PROD and TEST accounts
+
 ```shell
 PROD_ACCOUNT_CLUSTERS=(
   eks-pac-staging-eu
@@ -107,32 +113,50 @@ TEST_ACCOUNT_CLUSTERS=(
   eks-delivery-staging-eu
 )
 ```
-5. Execute `update-eks-kubeconfig.sh`
+
+1. Execute `update-eks-kubeconfig.sh`
+
 ```shell
 bash update-eks-kubeconfig.sh
 ```
+
 Restricted VPN is now no longer needed.
 
-6. Export KUBECONFIG
+1. Export KUBECONFIG
+
+```shell
+export-eks-kubeconfig
+```
+
+or if you miss the alias
+
 ```shell
 export KUBECONFIG=$HOME/.kube/eks-kubeconfig
 ```
-7. Install [kubectx](https://github.com/ahmetb/kubectx)
+
+1. Install [kubectx](https://github.com/ahmetb/kubectx)
+
 ```shell
 brew install kubectx
 ```
-8. Run kubectx
+
+1. Run kubectx
+
 ```shell
 laptop$ kubectx
 eks-delivery-test-eu
 eks-pac-test-eu
 laptop$
 ```
-9. Connect to EKS cluster
+
+1. Connect to EKS cluster
+
 ```shell
 laptop$ kubectx eks-delivery-test-eu
 ```
-10. Profit
+
+1. Profit
+
 ```shell
 kubectl get pods
 ```
