@@ -6,11 +6,15 @@ IFS=$'\n\t'
 PROD_ACCOUNT_CLUSTERS=(
   eks-pac-test-eu
   eks-pac-test-us
-
+  eks-pac-staging-us
+  eks-pac-staging-eu
+  eks-publish-staging-us
+  eks-publish-staging-eu
 )
 TEST_ACCOUNT_CLUSTERS=(
   eks-publish-test-eu
   eks-delivery-test-eu
+  eks-publish-dev-eu
 )
 
 
