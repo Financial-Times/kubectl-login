@@ -8,6 +8,8 @@ PROD_ACCOUNT_CLUSTERS=(
   eks-pac-test-us
   eks-pac-staging-us
   eks-pac-staging-eu
+  eks-pac-prod-us
+  eks-pac-prod-eu
   eks-publish-staging-us
   eks-publish-staging-eu
 )
