@@ -15,6 +15,7 @@ PROD_ACCOUNT_CLUSTERS=(
   eks-publish-prod-us
   eks-publish-prod-eu
   eks-delivery-staging-us
+  eks-delivery-staging-eu
 )
 TEST_ACCOUNT_CLUSTERS=(
   eks-delivery-test-eu
