@@ -105,74 +105,74 @@ on the jumpbox.
 1. Connect to Restricted VPN
 1. Checkout the kubectl-login repo
 
-```shell
-git clone git@github.com:Financial-Times/kubectl-login.git
-```
+    ```shell
+    git clone git@github.com:Financial-Times/kubectl-login.git
+    ```
 
 1. Get in `update-eks-kubeconfig/` folder
 
-```shell
-cd update-eks-kubeconfig/
-```
+    ```shell
+    cd update-eks-kubeconfig/
+    ```
 
 1. Edit `update-eks-kubeconfig.sh` script and fill in the EKS cluster names
-in PROD and TEST accounts
+  in PROD and TEST accounts
 
-```shell
-PROD_ACCOUNT_CLUSTERS=(
-  eks-pac-staging-eu
-  eks-pac-staging-us
+    ```shell
+    PROD_ACCOUNT_CLUSTERS=(
+      eks-pac-staging-eu
+      eks-pac-staging-us
 
-)
-TEST_ACCOUNT_CLUSTERS=(
-  eks-publish-staging-eu
-  eks-delivery-staging-eu
-)
-```
+    )
+    TEST_ACCOUNT_CLUSTERS=(
+      eks-publish-staging-eu
+      eks-delivery-staging-eu
+    )
+    ```
 
 1. Execute `update-eks-kubeconfig.sh`
 
-```shell
-bash update-eks-kubeconfig.sh
-```
+    ```shell
+    bash update-eks-kubeconfig.sh
+    ```
 
-Restricted VPN is now no longer needed.
+    Restricted VPN is now no longer needed.
 
 1. Export KUBECONFIG
 
-```shell
-export-eks-kubeconfig
-```
+    ```shell
+    export-eks-kubeconfig
+    ```
 
-or if you miss the alias
+    or if you miss the alias
 
-```shell
-export KUBECONFIG=$HOME/.kube/eks-kubeconfig
-```
+    ```shell
+    export KUBECONFIG=$HOME/.kube/eks-kubeconfig
+    ```
 
 1. Install [kubectx](https://github.com/ahmetb/kubectx)
 
-```shell
-brew install kubectx
-```
+    ```shell
+    brew install kubectx
+    ```
 
 1. Run kubectx
 
-```shell
-laptop$ kubectx
-eks-delivery-test-eu
-eks-pac-test-eu
-laptop$
-```
+    ```shell
+    laptop$ kubectx
+    eks-delivery-test-eu
+    eks-pac-test-eu
+    laptop$
+    ```
 
 1. Connect to EKS cluster
 
-```shell
-laptop$ kubectx eks-delivery-test-eu
-```
+    ```shell
+    laptop$ kubectx eks-delivery-test-eu
+    ```
 
 1. Profit
 
-```shell
-kubectl get pods
-```
+    ```shell
+    kubectl get pods
+    ```
