@@ -70,28 +70,23 @@
 - put `export KUBECONFIG=[path-to-repo]/content-k8s-auth-setup/kubeconfig`  in `~/.zshrc`
 - execute `source cluster-login.zsh udde`
 
-#### Only if you are connecting to EKS
+## EKS
+
+### Info
 
 When provisioning a new EKS cluster the provisioning script will upload the
-corresponding kubeconfig to S3 bucket named "upp-kubeconfig-ACCOUNT-NUMBER".
-In order to use it you need to get this kubeconifg and merge it with the
+corresponding kubeconfig to S3 bucket named `upp-kubeconfig-ACCOUNT-NUMBER`.
+In order to use it you need to get this kubeconfig and merge it with the
 kubeconfig files of the rest of EKS clusters. This way you will have a single
-united kubeconfig for all the EKS clusters. Inside `update-eks-kubeconfig`
-directory there is a script named `update-eks-kubeconfig.sh`. The script will
-do this merge for you and will store the merged eks-kubecofig under $HOME/.kube
+united kubeconfig for all the EKS clusters.
 
-Connect to the Restricted VPN and execute:
+If you want to do that automatically, there is this script
+`./update-eks-kubeconfig/update-eks-kubeconfig.sh`.
+The script will do the merge for you. It will store the merged
+`eks-kubecofig` under `$HOME/.kube`.
+More details on that in the [#step-by-step guide](#connect-to-eks-cluster-step-by-step-guide) below.
 
-```shell
-cd update-eks-kubeconfig/
-bash update-eks-kubeconfig.sh
-```
-
-If you want create an alias to easily change the KUBECONFIG:
-
-```shell
-alias export-eks-kubeconfig="export KUBECONFIG=/$HOME/.kube/eks-kubeconfig"
-```
+#### Ops specifics
 
 The script `ops-eks-kubeconfig.sh` inside `update-eks-kubeconfig` directory
 is intended to be used from OPS on the jumpbox (Upp Jumpbox p).
@@ -100,79 +95,88 @@ everytime a user is connected. The purpose of the script is similar - it will
 download and merge the kubeconfigs for OPS and will get `kubectx` tool
 on the jumpbox.
 
-#### Step-by-Step guide how to connect to EKS clusters
+### Connect to EKS cluster (Step-by-step guide)
 
-1. Connect to Restricted VPN
-1. Checkout the kubectl-login repo
+1. Checkout the kubectl-login repo and get into the proper folder:
 
     ```shell
     git clone git@github.com:Financial-Times/kubectl-login.git
-    ```
-
-1. Get in `update-eks-kubeconfig/` folder
-
-    ```shell
     cd update-eks-kubeconfig/
     ```
 
-1. Edit `update-eks-kubeconfig.sh` script and fill in the EKS cluster names
-  in PROD and TEST accounts
+1. Check the script `update-eks-kubeconfig.sh` and update the EKS cluster names
+  for PROD and TEST accounts, if needed:
 
     ```shell
     PROD_ACCOUNT_CLUSTERS=(
-      eks-pac-staging-eu
-      eks-pac-staging-us
-
+      ...
     )
     TEST_ACCOUNT_CLUSTERS=(
-      eks-publish-staging-eu
-      eks-delivery-staging-eu
+      ...
     )
     ```
 
-1. Execute `update-eks-kubeconfig.sh`
+    How to check what are the EKS clusters' names?
+
+    - Log into the [AWS console](https://awslogin.in.ft.com/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=urn:amazon:webservices).
+    - Check accordingly test and prod accounts.
+    - Look for `EKS` and check the cluster names there.
+      Or if you are already looged in, you can directly check the
+      [EKS Cluster names](https://eu-west-1.console.aws.amazon.com/eks/home?region=eu-west-1#/clusters).
+
+1. Once happy with the cluster names setup:
+
+   - Make sure that you are connected to the Restricted VPN.
+   - Then execute `update-eks-kubeconfig.sh`
+     (you should be in its folder):
 
     ```shell
     bash update-eks-kubeconfig.sh
     ```
 
-    Restricted VPN is now no longer needed.
+    - Restricted VPN is now no longer needed after this step.
 
-1. Export KUBECONFIG
-
-    ```shell
-    export-eks-kubeconfig
-    ```
-
-    or if you miss the alias
+1. Set KUBECONFIG to its proper EKS value
 
     ```shell
     export KUBECONFIG=$HOME/.kube/eks-kubeconfig
     ```
 
-1. Install [kubectx](https://github.com/ahmetb/kubectx)
+1. Install [kubectx](https://github.com/ahmetb/kubectx) and run it:
 
     ```shell
     brew install kubectx
     ```
 
-1. Run kubectx
-
     ```shell
-    laptop$ kubectx
-    eks-delivery-test-eu
-    eks-pac-test-eu
-    laptop$
+    kubectx
     ```
 
-1. Connect to EKS cluster
+1. Connect to an EKS cluster by specifying its name:
 
     ```shell
-    laptop$ kubectx eks-delivery-test-eu
+    kubectx eks-publish-dev-eu
     ```
 
-1. Profit
+1. Check that you are able to execute commands:
 
     ```shell
     kubectl get pods
     ```
+
+### Navigation between K8S and EKS
+
+#### Aliases
+
+The main difference is the `KUBECONFIG` value.
+So for easier access to both K8S and EKS of clusters,
+you can set up some aliases to quickly change that:
+
+```shell
+alias export-k8s-kubeconfig='export KUBECONFIG=$HOME/content-k8s-auth-setup/kubeconfig'
+alias export-eks-kubeconfig='export KUBECONFIG=$HOME/.kube/eks-kubeconfig'
+```
+
+Alter the path to your `content-k8s-auth-setup` repo accordingly.
+
+Name your aliases according to your personal preference, above are just example names.
