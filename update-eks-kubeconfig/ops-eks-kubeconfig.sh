@@ -41,7 +41,6 @@ sudo rm -f /etc/skel/content-k8s-auth-setup/eks-kubeconfig
 cd "${TMP_EXEC_DIR}"/
 KUBECONFIG=$(echo "${PROD_ACCOUNT_CLUSTERS[@]}" | sed 's/ /:/g') kubectl config view --merge=true --flatten=true > eks-kubeconfig
 cp eks-kubeconfig "${HOME}"/content-k8s-auth-setup/eks-kubeconfig
-sudo mv eks-kubeconfig /etc/skel/content-k8s-auth-setup/eks-kubeconfig
 
 
 #Cleanup
