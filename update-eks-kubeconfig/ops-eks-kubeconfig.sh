@@ -44,6 +44,9 @@ cd "${TMP_EXEC_DIR}"/
 KUBECONFIG=$(echo "${PROD_ACCOUNT_CLUSTERS[@]}" | sed 's/ /:/g') kubectl config view --merge=true --flatten=true > eks-kubeconfig
 cp eks-kubeconfig "${HOME}"/content-k8s-auth-setup/eks-kubeconfig
 
+if [ ! -d $HOME/.kube ]; then
+mkdir -p $HOME/.kube
+fi
 
 #Cleanup
 cd - 1>/dev/null
