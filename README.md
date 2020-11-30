@@ -97,6 +97,8 @@ on the jumpbox.
 
 ### Connect to EKS cluster (Step-by-step guide)
 
+IMPORTANT: This guide has been moved. To read the most resent version go to [upp-docs](https://github.com/Financial-Times/upp-docs/tree/master/guides/howto/setup-eks-kubeconfig-login). 
+
 1. Checkout the kubectl-login repo and get into the proper folder:
 
     ```shell
