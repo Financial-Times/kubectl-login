@@ -19,8 +19,8 @@ jobs:
       - run:
           name: External dependencies
           command: |
-            go install github.com/mattn/goveralls
-            go install github.com/jstemmer/go-junit-report
+            go install github.com/mattn/goveralls@latest
+            go install github.com/jstemmer/go-junit-report@latest
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run:
           name: Make result folders
