@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: /go/src/github.com/Financial-Times/kubectl-login
     docker:
-      - image: circleci/golang:1.10
+      - image: circleci/golang:1
         environment:
           CIRCLE_TEST_REPORTS: /tmp/test-results
           CIRCLE_COVERAGE_REPORT: /tmp/coverage-results
@@ -19,17 +19,13 @@ jobs:
       - run:
           name: External dependencies
           command: |
-            go get -u github.com/mattn/goveralls
-            go get -u github.com/jstemmer/go-junit-report
-            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+            go install github.com/mattn/goveralls@latest
+            go install github.com/jstemmer/go-junit-report@latest
       - run:
           name: Make result folders
           command: |
             mkdir -p ${CIRCLE_TEST_REPORTS}
             mkdir -p ${CIRCLE_COVERAGE_REPORT}
-      - run:
-          name: Download vendored dependancies
-          command: dep ensure -v -vendor-only
       - run:
           name: Go build
           command: go build -v
