@@ -4,10 +4,6 @@ set -euo pipefail
 IFS=$'\n\t'
 
 PROD_ACCOUNT_CLUSTERS=(
-  eks-pac-staging-us
-  eks-pac-staging-eu
-  eks-pac-prod-us
-  eks-pac-prod-eu
   eks-publish-staging-us
   eks-publish-staging-eu
   eks-publish-prod-us
